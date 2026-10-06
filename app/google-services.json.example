@@ -1,0 +1,9 @@
+{
+	"_comment": "Reemplaza este archivo por el google-services.json real que descargas de la consola de Firebase (Configuración del proyecto → tus apps → Android). Luego renómbralo a google-services.json (sin .example) y ponlo en esta misma carpeta (app/). No se sube al repositorio (ver .gitignore).",
+	"project_info": { "project_id": "TU-PROYECTO-FIREBASE" },
+	"client": [
+		{
+			"client_info": { "android_client_info": { "package_name": "com.micongre.app" } }
+		}
+	]
+}

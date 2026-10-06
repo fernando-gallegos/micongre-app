@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo de Mi Congre (public/logo.svg del proyecto web) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+	android:width="108dp"
+	android:height="108dp"
+	android:viewportWidth="512"
+	android:viewportHeight="512">
+	<group android:scaleX="0.8" android:scaleY="0.8" android:pivotX="256" android:pivotY="256">
+	<path android:fillColor="#FFFFFF" android:pathData="M133,94H199A40,40 0 0 1 239,134V200A40,40 0 0 1 199,240H133A40,40 0 0 1 93,200V134A40,40 0 0 1 133,94ZM315,94H381A40,40 0 0 1 421,134V200A40,40 0 0 1 381,240H315A40,40 0 0 1 275,200V134A40,40 0 0 1 315,94ZM133,276H199A40,40 0 0 1 239,316V382A40,40 0 0 1 199,422H133A40,40 0 0 1 93,382V316A40,40 0 0 1 133,276ZM315,276H381A40,40 0 0 1 421,316V382A40,40 0 0 1 381,422H315A40,40 0 0 1 275,382V316A40,40 0 0 1 315,276Z" />
+	<group>
+		<clip-path android:pathData="M133,94H199A40,40 0 0 1 239,134V200A40,40 0 0 1 199,240H133A40,40 0 0 1 93,200V134A40,40 0 0 1 133,94ZM315,276H381A40,40 0 0 1 421,316V382A40,40 0 0 1 381,422H315A40,40 0 0 1 275,382V316A40,40 0 0 1 315,276Z" />
+		<path android:fillColor="#06A5CC" android:pathData="M209,163H305A50,50 0 0 1 355,213V304A50,50 0 0 1 305,354H209A50,50 0 0 1 159,304V213A50,50 0 0 1 209,163Z" />
+	</group>
+	<group>
+		<clip-path android:pathData="M315,94H381A40,40 0 0 1 421,134V200A40,40 0 0 1 381,240H315A40,40 0 0 1 275,200V134A40,40 0 0 1 315,94ZM133,276H199A40,40 0 0 1 239,316V382A40,40 0 0 1 199,422H133A40,40 0 0 1 93,382V316A40,40 0 0 1 133,276Z" />
+		<path android:fillColor="#10DFF5" android:pathData="M209,163H305A50,50 0 0 1 355,213V304A50,50 0 0 1 305,354H209A50,50 0 0 1 159,304V213A50,50 0 0 1 209,163Z" />
+	</group>
+	<path android:fillColor="#10DFF5" android:pathData="M190 280C232 280 240 250 256 232C272 214 270 212 292 212L324 240C282 240 274 270 258 288C242 306 244 308 222 308Z" />
+	</group>
+</vector>

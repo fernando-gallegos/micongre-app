@@ -1,0 +1,17 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+/app/google-services.json
+
+# Firma de la app: nunca se comparte ni se sube
+/keystore.properties
+*.jks
+*.keystore
