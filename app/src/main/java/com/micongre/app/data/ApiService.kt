@@ -11,7 +11,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-/** Un endpoint por línea, todos ya existentes en micongre-web — ver docs/mobile-activation-protocol.md ahí
+/** Un endpoint por línea, todos ya existentes en micongre-admin — ver docs/mobile-activation-protocol.md ahí
  * para el contrato exacto de activación/login/refresh. */
 interface ApiService {
 	@GET("api/auth/activate")

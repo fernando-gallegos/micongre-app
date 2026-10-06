@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PushCryptoTest {
-	// Vector generado con el código del servidor (micongre-web/src/lib/push/e2e.ts, WebCrypto): comprueba que la app
+	// Vector generado con el código del servidor (micongre-admin/src/lib/push/e2e.ts, WebCrypto): comprueba que la app
 	// descifra exactamente lo que cifra el servidor.
 	private val priv = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgPHuh6e3ixA-vUk_1fIwaUCkOiTICJgNg_mcehPw_dIihRANCAARqdlFZ_qhH-pAFt6R8AT1w9NkVF6qdoxNe1E1UprH2OGldj2-PwoqikkjII1leDNqmj480_R8x5eAQsKSJB5SB"
 	private val ek = "BMrKjzrCnE8eXEsev8CKEmIO1XDYSG4gmtiI3va4Fv6_w-Pvcx_2GmPrY96reA0KIjWTZFWgE3MUq4PNEWPWLWY"

@@ -18,7 +18,7 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Cifrado de punta a punta de los push (esquema "v1", el mismo que micongre-web/src/lib/push/e2e.ts): el teléfono tiene
+ * Cifrado de punta a punta de los push (esquema "v1", el mismo que micongre-admin/src/lib/push/e2e.ts): el teléfono tiene
  * una llave P-256 propia; el servidor cifra con ECDH (llave efímera) + HKDF-SHA256 (salt = iv, info = "micongre-push-v1") +
  * AES-256-GCM, de modo que ni el relay ni Firebase pueden leer el aviso. La llave privada nunca sale del teléfono.
  * Solo usa la librería estándar de Java, para poder probarlo en la JVM.

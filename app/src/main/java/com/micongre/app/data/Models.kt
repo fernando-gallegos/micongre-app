@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 // Mismos contratos que el backend web (ver docs/mobile-activation-protocol.md
-// y src/lib/queries/panel.ts en micongre-web) — nada de esto se inventa del
+// y src/lib/queries/panel.ts en micongre-admin) — nada de esto se inventa del
 // lado de la app, solo se refleja.
 
 @Serializable

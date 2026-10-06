@@ -22,7 +22,7 @@
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 
-			<!-- App Links de /activar/<token> (docs/mobile-activation-protocol.md en micongre-web). Cada congregación vive en
+			<!-- App Links de /activar/<token> (docs/mobile-activation-protocol.md en micongre-admin). Cada congregación vive en
 			     <subdominio>.micongre.app; Android verifica el comodín contra https://micongre.app/.well-known/assetlinks.json
 			     (lo sirve micongre-router). -->
 			<intent-filter android:autoVerify="true">

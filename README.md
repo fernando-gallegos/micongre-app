@@ -1,7 +1,7 @@
 # MiCongre Android
 
 App nativa (Kotlin + Jetpack Compose) de solo lectura para el "Mi Panel" de
-[micongre-web](../micongre-web) — repositorio y proyecto completamente
+[micongre-admin](https://github.com/fernando-gallegos/micongre-admin) — repositorio y proyecto completamente
 separados, conectados solo por la API HTTPS del backend.
 
 ## Qué hace hoy
@@ -9,7 +9,7 @@ separados, conectados solo por la API HTTPS del backend.
 Mismo alcance y forma que la web para una persona con su sesión; todo se rige por los privilegios y nombramientos
 que devuelve `GET /api/auth/me` (igual que el menú de la web).
 
-- Login y activación (`docs/mobile-activation-protocol.md` en `micongre-web`): un enlace `https://<sitio>/activar/<token>` abre la app (App Link verificado para `*.micongre.app`) y muestra `ActivationScreen`; con refresh automático del token.
+- Login y activación (`docs/mobile-activation-protocol.md` en `micongre-admin`): un enlace `https://<sitio>/activar/<token>` abre la app (App Link verificado para `*.micongre.app`) y muestra `ActivationScreen`; con refresh automático del token.
 - **Eliminar mi cuenta** (Más → Mi perfil): `POST /api/auth/delete-account` con la contraseña; quita el acceso pero no la ficha de publicador.
 - **Mi Panel**: asignaciones futuras (incluye territorios con mapa dibujado, completar y devolver), limpieza, avisos
   (ocultar), pastoreo (solicitar, cancelar y seguimiento: completar/postergar/cancelar)
@@ -28,7 +28,7 @@ backend (`/api/auth/me` con `navShortcut` y `appointmentTypes`, nombres en el de
 
 ## Abrir el proyecto
 
-1. Abre esta carpeta (`C:\repos\micongre-android`) directamente en Android
+1. Abre esta carpeta directamente en Android
    Studio (Open → selecciona la carpeta). Android Studio genera `local.properties`
    y el `gradlew`/wrapper jar solos la primera vez que sincroniza — no hace
    falta tenerlos a mano.
@@ -62,7 +62,7 @@ app/src/main/java/com/micongre/app/
 
 ## Push en tiempo real (Firebase, opcional)
 
-Si agregas `app/google-services.json` (ver `docs/firebase-push.md` en `micongre-web`, con el paso a paso para crear la cuenta
+Si agregas `app/google-services.json` (ver `docs/firebase-push.md` en `micongre-admin`, con el paso a paso para crear la cuenta
 gratuita de Firebase) y el sitio de la congregación tiene el secreto `FCM_SERVICE_ACCOUNT`, la app usa push en tiempo real y
 deja de revisar cada tanto. Sin esos dos elementos sigue con la revisión periódica de arriba.
 
@@ -71,4 +71,3 @@ deja de revisar cada tanto. Sin esos dos elementos sigue con la revisión perió
 - `targetSdk`/`compileSdk` 36 (Play lo exige desde el 31-ago-2026) con AGP 8.9.3.
 - Bundle firmado con la clave de carga: `gradle :app:bundleRelease` → `app/build/outputs/bundle/release/MiCongre-<versión>-release.aab` (cada build release sube el consecutivo de `version.properties`).
 - `micongre-release.jks` y `keystore.properties` no están en ningún repositorio: **respáldalos** (gestor de contraseñas / nube privada). Con Play App Signing, perder la clave de carga se puede recuperar con soporte de Google; aun así, guárdala.
-- Textos, gráficos y pasos de la ficha: `micongre-web/play-store/`.

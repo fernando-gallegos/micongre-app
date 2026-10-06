@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit
 
 // Mapa base gratuito: teselas vectoriales de OpenFreeMap (datos de OpenStreetMap, sin llave ni cuota), el mismo estilo "bright"
 // que usa la web, sin los nombres de lugares (ciudades, colonias, agua, aeropuertos, límites y escudos de carreteras): quedan los
-// nombres de calles y los lugares de interés (ver micongre-web/src/lib/territories/mapStyle.ts).
+// nombres de calles y los lugares de interés (ver micongre-admin/src/lib/territories/mapStyle.ts).
 private const val STYLE_URL = "https://tiles.openfreemap.org/styles/bright"
 private val HIDDEN_SOURCE_LAYERS = setOf("place", "water_name", "aerodrome_label", "boundary", "housenumber", "mountain_peak")
 private val HIDDEN_LAYER_IDS = setOf("waterway_line_label", "highway-shield-non-us", "highway-shield-us-interstate", "road_shield_us")
