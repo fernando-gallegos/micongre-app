@@ -1,7 +1,13 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools">
 
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+	<!-- La app no usa la ubicación del teléfono (el mapa solo muestra el territorio); MapLibre trae estos permisos en su manifiesto y
+	     se quitan para no pedirlos en Google Play ni declarar ubicación en Seguridad de los datos. -->
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
 
 	<application
 		android:name=".MicongreApplication"
