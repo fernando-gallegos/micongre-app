@@ -4,6 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -56,8 +60,16 @@ private fun iconFor(dest: Dest): ImageVector = when (dest) {
 }
 
 /** Barra inferior de la app: Mi Panel, Reuniones, un botón configurable (opcional), Avisos y Más. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MainShell(vm: AppViewModel, container: AppContainer, me: Me) {
+	val refresh = remember { RefreshController() }
+	androidx.compose.runtime.CompositionLocalProvider(LocalRefresh provides refresh) { MainShellContent(vm, container, me, refresh) }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun MainShellContent(vm: AppViewModel, container: AppContainer, me: Me, refresh: RefreshController) {
 	// Android 13+: pedir el permiso de notificaciones una vez, para poder avisar de asignaciones y avisos nuevos.
 	val context = androidx.compose.ui.platform.LocalContext.current
 	val permission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
@@ -87,6 +99,35 @@ fun MainShell(vm: AppViewModel, container: AppContainer, me: Me) {
 	}
 	BackHandler(enabled = stack.size > 1) { stack = stack.dropLast(1) }
 
+	// Sin conexión: aviso fijo arriba, y un mensaje claro cuando se intenta guardar algo.
+	val offline by com.micongre.app.data.NetworkStatus.offline.collectAsState()
+	val connected by com.micongre.app.data.NetworkStatus.connected.collectAsState()
+	val snackbar = remember { androidx.compose.material3.SnackbarHostState() }
+	androidx.compose.runtime.LaunchedEffect(Unit) {
+		com.micongre.app.data.NetworkStatus.blockedWrites.collect {
+			snackbar.currentSnackbarData?.dismiss()
+			snackbar.showSnackbar("Sin conexión: no se puede guardar ahora. Conéctate a internet e inténtalo de nuevo.")
+		}
+	}
+	// Al volver internet se actualiza solo lo que se está viendo.
+	var wasConnected by remember { mutableStateOf(connected) }
+	androidx.compose.runtime.LaunchedEffect(connected) {
+		if (connected && !wasConnected) {
+			refresh.tick += 1
+			vm.refreshMe()
+		}
+		wasConnected = connected
+	}
+	// Deslizar hacia abajo: pide de nuevo lo último de todo lo que hay en pantalla.
+	var pulling by remember { mutableStateOf(false) }
+	androidx.compose.runtime.LaunchedEffect(pulling) {
+		if (pulling) {
+			kotlinx.coroutines.delay(500)
+			while (refresh.active > 0) kotlinx.coroutines.delay(150)
+			pulling = false
+		}
+	}
+
 	val shortcut = vm.activeShortcut(me)
 	// La pestaña activa es la raíz de la pila; los submódulos (detalle de publicador, etc.) cuentan como su pestaña.
 	val root = stack.first()
@@ -99,6 +140,16 @@ fun MainShell(vm: AppViewModel, container: AppContainer, me: Me) {
 	}
 
 	Scaffold(
+		snackbarHost = {
+			androidx.compose.material3.SnackbarHost(snackbar, Modifier.padding(horizontal = 12.dp)) { data ->
+				Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.inverseSurface, shadowElevation = 6.dp) {
+					Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+						Icon(Icons.Filled.CloudOff, null, tint = MaterialTheme.colorScheme.inverseOnSurface)
+						Text(data.visuals.message, color = MaterialTheme.colorScheme.inverseOnSurface, style = MaterialTheme.typography.bodyMedium)
+					}
+				}
+			}
+		},
 		bottomBar = {
 			// Barra propia: el resalte es un cuadrado alto de esquinas redondeadas (en vez de la píldora delgada de Material).
 			Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
@@ -119,12 +170,31 @@ fun MainShell(vm: AppViewModel, container: AppContainer, me: Me) {
 			}
 		},
 	) { padding ->
-		Box(Modifier.fillMaxSize().padding(padding)) {
+		Column(Modifier.fillMaxSize().padding(padding)) {
+		if (offline || !connected) {
+			Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
+				Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+					Icon(Icons.Filled.CloudOff, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+					Text("Sin conexión · mostrando lo último guardado", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+				}
+			}
+		}
+		androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+			isRefreshing = pulling,
+			onRefresh = {
+				pulling = true
+				refresh.tick += 1
+				vm.refreshMe()
+			},
+			modifier = Modifier.weight(1f).fillMaxWidth(),
+		) {
+		Box(Modifier.fillMaxSize()) {
 			when (val d = current) {
 				is Dest.Panel -> PanelScreen(container, me, onOpenS21 = { go(Dest.Reports(me.id)) })
 				is Dest.Notifications -> NotificationsScreen(container, me)
 				is Dest.More -> MoreScreen(vm, me, onOpen = ::go, onLogout = vm::logout)
-				is Dest.Preaching -> com.micongre.app.ui.screens.PreachingScreen(container)
+				is Dest.Preaching -> com.micongre.app.ui.screens.PreachingScreen(container, me, onOpenTerritories = { go(Dest.Territories) })
+				is Dest.Territories -> com.micongre.app.ui.screens.TerritoriesScreen(container, me)
 				is Dest.Accounts -> com.micongre.app.ui.screens.AccountsScreen(vm, onAdd = { go(Dest.AddAccount) })
 				is Dest.AddAccount -> com.micongre.app.ui.screens.AddAccountScreen(vm, vm.serverUrl.value, onBack = { stack = stack.dropLast(1) })
 				is Dest.Profile -> ProfileScreen(vm, me, onBack = { stack = stack.dropLast(1) })
@@ -133,8 +203,10 @@ fun MainShell(vm: AppViewModel, container: AppContainer, me: Me) {
 				is Dest.PublisherDetail -> PublisherDetailScreen(
 					container, d.id, onBack = { stack = stack.dropLast(1) }, onOpenS21 = { go(Dest.Reports(d.id)) },
 				)
-				is Dest.Reports -> ReportsScreen(container, me, d.userId, onPickPublisher = { go(Dest.Reports(it)) })
+				is Dest.Reports -> com.micongre.app.ui.screens.ReportsHost(container, me, d.userId, onPickPublisher = { go(Dest.Reports(it)) })
 			}
+		}
+		}
 		}
 	}
 }

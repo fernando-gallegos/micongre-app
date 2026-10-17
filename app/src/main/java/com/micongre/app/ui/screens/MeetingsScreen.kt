@@ -196,9 +196,14 @@ private fun MidweekView(container: AppContainer, weekStart: LocalDate) {
 				Line("Presidente", m.chairmanName)
 				if (!d.skipOpeningPrayer) Line("Oración inicial", m.openingPrayerName)
 				Line("Oración final", d.assignments.firstOrNull { it.sectionType == "prayer" }?.mainAssigneeName)
-				m.openingSongNumber?.let { Line("Canción inicial", it.toString()) }
 				Line("Estado", STATUS_LABEL[m.status] ?: m.status)
 			}
+		}
+
+		// Cada canción va en su lugar del programa: inicial antes de Tesoros, intermedia en Nuestra vida cristiana y final al cierre.
+		m.openingSongNumber?.let {
+			Spacer8()
+			SongCard(songText(it, m.openingSongTitle))
 		}
 
 		val parts = d.assignments.filter { it.sectionType != "prayer" }.sortedBy { it.sequenceOrder }
@@ -218,7 +223,7 @@ private fun MidweekView(container: AppContainer, weekStart: LocalDate) {
 			SectionBar(title, color)
 			Tinted(soft) {
 				if (gi == 2) m.middleSongNumber?.let {
-					PartRow("Canción $it", null, null, emptyList())
+					PartRow(songText(it, m.middleSongTitle), null, null, emptyList())
 				}
 				var cbsDone = false
 				rows.forEach { a ->
@@ -248,7 +253,7 @@ private fun MidweekView(container: AppContainer, weekStart: LocalDate) {
 		}
 		m.closingSongNumber?.let {
 			Spacer8()
-			AppCard { Line("Canción final", it.toString()) }
+			SongCard(songText(it, m.closingSongTitle))
 		}
 		OperationalSection(ops.data.orEmpty())
 	}
@@ -295,16 +300,46 @@ private fun WeekendView(container: AppContainer, weekStart: LocalDate) {
 				Line("Estado", STATUS_LABEL[m.status] ?: m.status)
 			}
 		}
-		SectionBar("La Atalaya", x.watchtower)
-		Tinted(x.watchtowerSoft) {
-			Line("Conductor", m.watchtowerConductorName)
-			Line("Lector", m.watchtowerReaderName)
+		// Normalmente se empieza con la canción y el discurso; a veces con La Atalaya y el discurso va después.
+		// Cada canción va con su parte (sin «inicial/final»): la del discurso, y las dos de La Atalaya (al empezar y al terminar).
+		val talkPart: @Composable () -> Unit = {
+			SectionBar("Discurso público", x.talk)
+			Tinted(x.talkSoft) {
+				val outline = listOfNotNull(m.talkOutlineNumber?.let { "$it." }, m.talkOutlineTitle).joinToString(" ")
+				Line("Orador", listOfNotNull(m.speakerName, m.speakerCongregationName?.let { "($it)" }).joinToString(" "))
+				Line("Discurso", outline)
+			}
 		}
-		SectionBar("Discurso público", x.talk)
-		Tinted(x.talkSoft) {
-			val outline = listOfNotNull(m.talkOutlineNumber?.let { "$it." }, m.talkOutlineTitle).joinToString(" ")
-			Line("Orador", listOfNotNull(m.speakerName, m.speakerCongregationName?.let { "($it)" }).joinToString(" "))
-			Line("Discurso", outline)
+		val talkSong: @Composable () -> Unit = {
+			m.talkSongNumber?.let {
+				Spacer8()
+				SongCard(songText(it, m.talkSongTitle))
+			}
+		}
+		val watchtowerPart: @Composable () -> Unit = {
+			m.watchtowerSongNumber?.let {
+				Spacer8()
+				SongCard(songText(it, m.watchtowerSongTitle))
+			}
+			SectionBar("La Atalaya", x.watchtower)
+			Tinted(x.watchtowerSoft) {
+				m.watchtowerTitle?.takeIf { it.isNotBlank() }?.let { Line("Estudio", it) }
+				Line("Conductor", m.watchtowerConductorName)
+				Line("Lector", m.watchtowerReaderName)
+			}
+			m.closingSongNumber?.let {
+				Spacer8()
+				SongCard(songText(it, m.closingSongTitle))
+			}
+		}
+		if (m.watchtowerFirst) {
+			watchtowerPart()
+			talkPart()
+			talkSong()
+		} else {
+			talkSong()
+			talkPart()
+			watchtowerPart()
 		}
 		m.notes?.takeIf { it.isNotBlank() }?.let {
 			SectionBar("Notas", MaterialTheme.colorScheme.onSurfaceVariant)
@@ -312,6 +347,14 @@ private fun WeekendView(container: AppContainer, weekStart: LocalDate) {
 		}
 		OperationalSection(ops.data.orEmpty())
 	}
+}
+
+/** «Canción 65: título» (o solo «Canción 65» si el catálogo no tiene el título). */
+private fun songText(number: Int, title: String?): String = if (title.isNullOrBlank()) "Canción $number" else "Canción $number: $title"
+
+@Composable
+private fun SongCard(text: String) {
+	AppCard { Text(text, Modifier.padding(16.dp), fontWeight = FontWeight.SemiBold) }
 }
 
 // --- Tareas operativas: una sección más al final del programa ---

@@ -64,7 +64,10 @@ fun MoreScreen(vm: AppViewModel, me: Me, onOpen: (Dest) -> Unit, onLogout: () ->
 		PageTitle("Más")
 		SectionLabel("Módulos")
 		// Predicación: el calendario lo ve cualquier persona (solo lo que le toca; quien administra el módulo, todo).
-		RowList(listOf<@Composable () -> Unit>({ MenuRow("Predicación") { onOpen(Dest.Preaching) } }) + modules.map { m -> { MenuRow(m.label) { onOpen(m.dest) } } })
+		RowList(
+			listOf<@Composable () -> Unit>({ MenuRow("Predicación") { onOpen(Dest.Preaching) } }) +
+				(if (canManageTerritories(me)) listOf<@Composable () -> Unit>({ MenuRow("Territorios") { onOpen(Dest.Territories) } }) else emptyList()) +
+				modules.map { m -> { MenuRow(m.label) { onOpen(m.dest) } } })
 		SectionLabel("Cuenta")
 		RowList(
 			listOf(

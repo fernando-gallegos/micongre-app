@@ -2,6 +2,7 @@
 	xmlns:tools="http://schemas.android.com/tools">
 
 	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 	<!-- La app no usa la ubicación del teléfono (el mapa solo muestra el territorio); MapLibre trae estos permisos en su manifiesto y
@@ -35,7 +36,7 @@
 				<action android:name="android.intent.action.VIEW" />
 				<category android:name="android.intent.category.DEFAULT" />
 				<category android:name="android.intent.category.BROWSABLE" />
-				<data android:scheme="https" android:host="*.micongre.app" android:pathPrefix="/activar" />
+				<data android:scheme="https" android:host="*.micongre.app" android:pathPrefix="/activar" />
 			</intent-filter>
 		</activity>
 

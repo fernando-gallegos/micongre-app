@@ -25,7 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -101,9 +103,23 @@ object Fmt {
 	}
 }
 
+/** Recarga global: al deslizar hacia abajo se sube `tick` y todas las cargas visibles vuelven a pedir lo último; `active` cuenta las
+ * que siguen en curso (para mostrar el indicador de actualización). */
+@Stable
+class RefreshController {
+	var tick by mutableIntStateOf(0)
+	var active by mutableIntStateOf(0)
+}
+
+val LocalRefresh = staticCompositionLocalOf { RefreshController() }
+
 /** Estado de una carga: datos, error y recarga manual. */
 @Stable
-class LoadState<T>(private val scope: CoroutineScope, private val block: suspend () -> Result<T>) {
+class LoadState<T>(
+	private val scope: CoroutineScope,
+	private val refresh: RefreshController? = null,
+	private val block: suspend () -> Result<T>,
+) {
 	var loading by mutableStateOf(true)
 		private set
 	var data by mutableStateOf<T?>(null)
@@ -114,8 +130,13 @@ class LoadState<T>(private val scope: CoroutineScope, private val block: suspend
 	fun reload() {
 		scope.launch {
 			loading = true
-			block().onSuccess { data = it; error = null }.onFailure { error = it }
-			loading = false
+			refresh?.let { it.active += 1 }
+			try {
+				block().onSuccess { data = it; error = null }.onFailure { error = it }
+			} finally {
+				refresh?.let { it.active -= 1 }
+				loading = false
+			}
 		}
 	}
 }
@@ -124,8 +145,17 @@ class LoadState<T>(private val scope: CoroutineScope, private val block: suspend
 @Composable
 fun <T> rememberLoad(key: Any? = Unit, block: suspend () -> Result<T>): LoadState<T> {
 	val scope = rememberCoroutineScope()
-	val state = remember(key) { LoadState(scope, block) }
+	val refresh = LocalRefresh.current
+	val state = remember(key) { LoadState(scope, refresh, block) }
 	LaunchedEffect(key) { state.reload() }
+	// Deslizar hacia abajo (o volver la conexión) fuerza pedir de nuevo lo último.
+	var seenTick by remember { mutableIntStateOf(refresh.tick) }
+	LaunchedEffect(refresh.tick) {
+		if (refresh.tick != seenTick) {
+			seenTick = refresh.tick
+			state.reload()
+		}
+	}
 	return state
 }
 

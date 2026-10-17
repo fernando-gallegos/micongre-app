@@ -110,6 +110,7 @@ fun BaseMapView(styleJson: String, geoJson: String, points: List<Pair<Double, Do
 					map.uiSettings.isTiltGesturesEnabled = false
 					map.uiSettings.isAttributionEnabled = true
 					map.setStyle(Style.Builder().fromJson(styleJson)) { style ->
+						addEmojiImages(style, emojisIn(geoJson))
 						style.addSource(GeoJsonSource("territory", geoJson))
 						val isPolygon = Expression.eq(Expression.geometryType(), "Polygon")
 						style.addLayer(
@@ -133,10 +134,10 @@ fun BaseMapView(styleJson: String, geoJson: String, points: List<Pair<Double, Do
 						)
 						style.addLayer(
 							SymbolLayer("t-emoji", "territory").withFilter(Expression.has("emoji")).withProperties(
-								PropertyFactory.textField(Expression.get("emoji")),
-								PropertyFactory.textSize(26f),
-								PropertyFactory.textAllowOverlap(true),
-								PropertyFactory.textIgnorePlacement(true),
+								PropertyFactory.iconImage(Expression.concat(Expression.literal("e:"), Expression.get("emoji"))),
+								PropertyFactory.iconSize(0.7f),
+								PropertyFactory.iconAllowOverlap(true),
+								PropertyFactory.iconIgnorePlacement(true),
 							),
 						)
 						style.addLayer(

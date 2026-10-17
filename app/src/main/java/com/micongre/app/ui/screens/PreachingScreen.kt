@@ -73,7 +73,7 @@ private fun iconFor(s: PreachingSession): Pair<ImageVector, String> = when {
 /** Predicación: calendario del mes en solo lectura. Muestra las salidas que le tocan a la persona (a toda la congregación, a su
  * grupo o a ella); quien administra el módulo en la web ve todas. Quien administra la predicación puede agregar salidas tocando un día; editar y borrar es desde la web. */
 @Composable
-fun PreachingScreen(container: AppContainer) {
+fun PreachingScreen(container: AppContainer, me: com.micongre.app.data.Me, onOpenTerritories: () -> Unit = {}) {
 	var month by remember { mutableStateOf(LocalDate.now().withDayOfMonth(1)) }
 	val key = "%04d-%02d".format(month.year, month.monthValue)
 	val state = rememberLoad(key) { api { container.apiService.preachingMonth(key) } }
@@ -88,7 +88,9 @@ fun PreachingScreen(container: AppContainer) {
 	val cells: List<LocalDate?> = (List(offset) { null } + days).let { it + List((7 - it.size % 7) % 7) { null } }
 
 	Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
-		PageTitle("Predicación", "Las salidas que te corresponden")
+		PageTitle("Predicación", "Las salidas que te corresponden") {
+			if (canManageTerritories(me)) TextButton(onClick = onOpenTerritories) { Text("Territorios") }
+		}
 		Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
 			IconButton(onClick = { month = month.minusMonths(1) }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Mes anterior") }
 			Text("${Fmt.monthNames[month.monthValue - 1]} ${month.year}", fontWeight = FontWeight.SemiBold)

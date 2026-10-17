@@ -239,8 +239,11 @@ data class MidweekMeeting(
 	val chairmanName: String? = null,
 	val openingPrayerName: String? = null,
 	val openingSongNumber: Int? = null,
+	val openingSongTitle: String? = null,
 	val middleSongNumber: Int? = null,
+	val middleSongTitle: String? = null,
 	val closingSongNumber: Int? = null,
+	val closingSongTitle: String? = null,
 	val hasAuxRoom: Boolean = false,
 	val notes: String? = null,
 )
@@ -286,6 +289,16 @@ data class WeekendMeeting(
 	val speakerCongregationName: String? = null,
 	val talkOutlineNumber: Int? = null,
 	val talkOutlineTitle: String? = null,
+	/** Canción del discurso: la que el orador tiene asignada a ese bosquejo. */
+	val talkSongNumber: Int? = null,
+	val talkSongTitle: String? = null,
+	/** La reunión empieza con La Atalaya y el discurso público va después. */
+	val watchtowerFirst: Boolean = false,
+	val watchtowerTitle: String? = null,
+	val watchtowerSongNumber: Int? = null,
+	val watchtowerSongTitle: String? = null,
+	val closingSongNumber: Int? = null,
+	val closingSongTitle: String? = null,
 )
 
 @Serializable
@@ -458,6 +471,96 @@ data class PreachingTargetsBody(val congregation: Boolean, val groupIds: List<St
 
 @Serializable
 data class CreatePreachingRequest(val date: String, val time: String, val note: String? = null, val territoryIds: List<String>, val targets: PreachingTargetsBody)
+
+// --- Territorios (Predicación → Territorios): lo administra quien tiene "Siervo de territorios" ---
+
+/** Asignación de un territorio; `status` es "assigned", "completed" o "returned". Las fechas llegan como texto ISO. */
+@Serializable
+data class TerritoryAssignment(
+	val id: String,
+	val assigneeUserId: String,
+	val assigneeName: String,
+	val assignedAt: String? = null,
+	val status: String = "assigned",
+	val resolvedAt: String? = null,
+	val resolutionComment: String? = null,
+	val notifiedAt: String? = null,
+)
+
+@Serializable
+data class TerritoryItem(
+	val id: String,
+	val number: String,
+	/** "general" o "public_preaching". */
+	val kind: String = "general",
+	val name: String? = null,
+	val notes: String? = null,
+	val hasMap: Boolean = false,
+	val current: TerritoryAssignment? = null,
+	val last: TerritoryAssignment? = null,
+)
+
+@Serializable
+data class TerritoryListResponse(val items: List<TerritoryItem> = emptyList())
+
+/** Una fila del historial/lista de asignaciones (GET /api/territories/assignments). */
+@Serializable
+data class TerritoryAssignmentRow(
+	val id: String,
+	val territoryId: String,
+	val territoryNumber: String,
+	val territoryName: String? = null,
+	val territoryKind: String = "general",
+	val assigneeUserId: String,
+	val assigneeName: String,
+	val assignedAt: String? = null,
+	val status: String = "assigned",
+	val resolvedAt: String? = null,
+	val resolutionComment: String? = null,
+	val notifiedAt: String? = null,
+)
+
+@Serializable
+data class TerritoryAssignmentListResponse(val items: List<TerritoryAssignmentRow> = emptyList())
+
+@Serializable
+data class TerritoryAssignee(val id: String, val fullName: String)
+
+@Serializable
+data class TerritoryAssigneesResponse(val items: List<TerritoryAssignee> = emptyList())
+
+@Serializable
+data class SaveTerritoryRequest(val number: String, val kind: String, val name: String, val notes: String)
+
+@Serializable
+data class AssignTerritoryRequest(val assigneeUserId: String)
+
+// --- Asistencia a las reuniones (Informes → Asistencia) ---
+
+/** Cifras ya registradas de una reunión; `meetingType` es "midweek" o "weekend". */
+@Serializable
+data class AttendanceItem(val meetingType: String, val meetingId: String, val inPersonCount: Int = 0, val zoomCount: Int = 0)
+
+@Serializable
+data class AttendanceListResponse(val items: List<AttendanceItem> = emptyList())
+
+/** Promedio de un tipo de reunión en un mes (presencial + Zoom por reunión). */
+@Serializable
+data class AttendanceMonthStat(
+	val meetings: Int = 0,
+	val average: Double = 0.0,
+	val averageInPerson: Double = 0.0,
+	val averageZoom: Double = 0.0,
+)
+
+@Serializable
+data class AttendanceMonth(val month: String, val midweek: AttendanceMonthStat? = null, val weekend: AttendanceMonthStat? = null)
+
+@Serializable
+data class AttendanceSummaryResponse(val months: List<AttendanceMonth> = emptyList())
+
+@Serializable
+data class AttendanceRequest(val meetingType: String, val meetingId: String, val meetingDate: String, val inPersonCount: Int, val zoomCount: Int)
 
 @Serializable
 data class S4Person(val userId: String, val fullName: String)

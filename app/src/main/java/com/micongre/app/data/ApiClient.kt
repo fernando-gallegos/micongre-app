@@ -22,6 +22,8 @@ interface AccountSession {
 	/** La sesión no se pudo renovar: se marca como vencida. */
 	suspend fun expire()
 	suspend fun server(): String?
+	/** Id de la cuenta (para guardar sus datos en el teléfono); null si no hay sesión. */
+	suspend fun accountId(): String?
 }
 
 /** La cuenta que esté activa en el momento de cada petición (lo que ve la pantalla). */
@@ -35,6 +37,7 @@ class ActiveSession(private val accounts: AccountStore, private val prefs: Prefs
 		accounts.active()?.let { accounts.markExpired(it.id) }
 	}
 	override suspend fun server() = accounts.active()?.server ?: prefs.currentServerUrl()
+	override suspend fun accountId() = accounts.active()?.id
 }
 
 /** Una cuenta concreta, esté o no activa (para revisar sus notificaciones y registrar el teléfono en segundo plano). */
@@ -44,6 +47,7 @@ class FixedSession(private val accounts: AccountStore, private val id: String) :
 	override suspend fun update(accessToken: String, refreshToken: String?) = accounts.updateTokens(id, accessToken, refreshToken)
 	override suspend fun expire() = accounts.markExpired(id)
 	override suspend fun server() = accounts.get(id)?.server
+	override suspend fun accountId(): String? = id
 }
 
 /** Sin sesión, solo para hablar con un sitio (iniciar sesión o activar una cuenta nueva). */
@@ -53,12 +57,18 @@ class AnonymousSession(private val server: String) : AccountSession {
 	override suspend fun update(accessToken: String, refreshToken: String?) {}
 	override suspend fun expire() {}
 	override suspend fun server() = server
+	override suspend fun accountId(): String? = null
 }
 
 /** Un access token vive 15 minutos (ver jwt.ts del backend); cuando el servidor devuelve 401 este Authenticator llama a
  * /api/auth/refresh una sola vez y reintenta — igual que tendría que hacerlo cualquier cliente móvil según el contrato
  * ya documentado en el backend. */
-class ApiClient(private val session: AccountSession) {
+class ApiClient(
+	private val session: AccountSession,
+	/** Con caché, las lecturas se guardan en el teléfono y se pueden ver sin internet. */
+	private val cache: OfflineCache? = null,
+	private val isConnected: () -> Boolean = { true },
+) {
 	private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
 	private val plainClient = OkHttpClient.Builder().build()
@@ -77,8 +87,12 @@ class ApiClient(private val session: AccountSession) {
 
 		val refreshResponse = plainClient.newCall(request).execute()
 		if (!refreshResponse.isSuccessful) {
-			// refresh_token_reused u otro 401 — la sesión no se puede recuperar sola.
-			runBlocking { session.expire() }
+			// refresh_token_reused u otro 401 — la sesión no se puede recuperar sola: se marca vencida y sus datos guardados se borran.
+			runBlocking {
+				val id = session.accountId()
+				session.expire()
+				if (id != null) cache?.clearAccount(id)
+			}
 			return@Authenticator null
 		}
 
@@ -104,7 +118,9 @@ class ApiClient(private val session: AccountSession) {
 	}
 
 	private val httpClient = OkHttpClient.Builder()
+		.connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
 		.addInterceptor(authInterceptor)
+		.apply { if (cache != null) addInterceptor(OfflineInterceptor(cache, { session.accountId() }, isConnected)) }
 		.authenticator(authenticator)
 		.apply {
 			if (BuildConfig.DEBUG) addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC))

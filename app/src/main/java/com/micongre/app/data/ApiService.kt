@@ -132,6 +132,51 @@ interface ApiService {
 	@POST("api/preaching")
 	suspend fun createPreaching(@Body body: CreatePreachingRequest): Response<CreatedResponse>
 
+	@GET("api/territories")
+	suspend fun territories(): Response<TerritoryListResponse>
+
+	@POST("api/territories")
+	suspend fun createTerritory(@Body body: SaveTerritoryRequest): Response<CreatedResponse>
+
+	@PATCH("api/territories/{id}")
+	suspend fun updateTerritory(@Path("id") id: String, @Body body: SaveTerritoryRequest): Response<OkResponse>
+
+	@PATCH("api/territories/{id}")
+	suspend fun saveTerritoryMap(@Path("id") id: String, @Body body: kotlinx.serialization.json.JsonObject): Response<OkResponse>
+
+	@DELETE("api/territories/{id}")
+	suspend fun deleteTerritory(@Path("id") id: String): Response<OkResponse>
+
+	@GET("api/territories/assignees")
+	suspend fun territoryAssignees(@Query("kind") kind: String): Response<TerritoryAssigneesResponse>
+
+	@POST("api/territories/{id}/assign")
+	suspend fun assignTerritory(@Path("id") id: String, @Body body: AssignTerritoryRequest): Response<OkResponse>
+
+	@DELETE("api/territories/{id}/assign")
+	suspend fun unassignTerritory(@Path("id") id: String): Response<OkResponse>
+
+	@POST("api/territories/{id}/notify")
+	suspend fun notifyTerritory(@Path("id") id: String): Response<OkResponse>
+
+	@GET("api/territories/assignments")
+	suspend fun territoryAssignments(): Response<TerritoryAssignmentListResponse>
+
+	@PATCH("api/territories/assignments/{id}")
+	suspend fun resolveTerritoryAssignment(@Path("id") id: String, @Body body: ResolveTerritoryRequest): Response<OkResponse>
+
+	@DELETE("api/territories/assignments/{id}")
+	suspend fun deleteTerritoryAssignment(@Path("id") id: String): Response<OkResponse>
+
+	@GET("api/attendance")
+	suspend fun attendanceFrom(@Query("from") from: String): Response<AttendanceListResponse>
+
+	@GET("api/attendance/summary")
+	suspend fun attendanceSummary(@Query("from") from: String): Response<AttendanceSummaryResponse>
+
+	@POST("api/attendance")
+	suspend fun saveAttendance(@Body body: AttendanceRequest): Response<OkResponse>
+
 	@GET("api/reports/s4/mine")
 	suspend fun myReport(@Query("year") year: Int, @Query("month") month: Int): Response<MyReportResponse>
 

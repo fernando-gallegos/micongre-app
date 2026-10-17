@@ -38,6 +38,7 @@ sealed interface Dest {
 	data object AddAccount : Dest
 	data object Meetings : Dest
 	data object Preaching : Dest
+	data object Territories : Dest
 	data object Publishers : Dest
 	data class PublisherDetail(val id: String) : Dest
 	data class Reports(val userId: String? = null) : Dest
@@ -173,6 +174,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
 	private suspend fun expireActive(id: String) {
 		container.accounts.markExpired(id)
+		container.offlineCache.clearAccount(id)
 		val next = container.accounts.all().firstOrNull { !it.expired }
 		if (next != null) {
 			activate(next.id)
@@ -252,6 +254,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 		}
 	}
 
+	/** Iniciar sesión siempre necesita internet (no se guarda nada de una cuenta que no ha entrado). */
+	private fun loginFailureMessage(error: Throwable): String =
+		if (error is java.io.IOException) "Sin conexión: para iniciar sesión necesitas internet. Conéctate e inténtalo de nuevo."
+		else "Usuario o contraseña incorrectos."
+
 	/** Primer inicio de sesión (con el sitio ya elegido). */
 	fun login(username: String, password: String) {
 		viewModelScope.launch {
@@ -263,7 +270,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 			}
 			container.authRepository.login(server, username, password)
 				.onSuccess { _me.value = null; loadMe(); scheduleSync(); _loggedIn.value = true }
-				.onFailure { _loginError.value = "Usuario o contraseña incorrectos." }
+				.onFailure { _loginError.value = loginFailureMessage(it) }
 		}
 	}
 
@@ -288,7 +295,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 					_loggedIn.value = true
 					onResult(null)
 				}
-				.onFailure { onResult("Usuario o contraseña incorrectos.") }
+				.onFailure { onResult(loginFailureMessage(it)) }
 		}
 	}
 
@@ -322,6 +329,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 			if (!serverAlreadyForgotDevice) FcmRegistrar.unregister(container, id)
 			container.accounts.remove(id)
 			container.prefs.clearSeen(id)
+			container.offlineCache.clearAccount(id)
 			val next = container.accounts.all().firstOrNull { !it.expired }
 			if (next != null) {
 				if (container.accounts.activeIdNow() != next.id || _me.value?.id == id) activate(next.id)
