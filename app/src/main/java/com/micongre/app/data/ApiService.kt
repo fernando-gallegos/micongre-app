@@ -1,7 +1,10 @@
 package com.micongre.app.data
 
 import kotlinx.serialization.json.JsonElement
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
+import retrofit2.http.Header
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -19,6 +22,9 @@ interface ApiService {
 
 	@POST("api/auth/activate")
 	suspend fun activate(@Body body: ActivateRequest): Response<AuthResponse>
+
+	@POST("api/auth/forgot")
+	suspend fun forgotPassword(@Body body: ForgotPasswordRequest): Response<OkResponse>
 
 	@POST("api/auth/login")
 	suspend fun login(@Body body: LoginRequest): Response<AuthResponse>
@@ -185,6 +191,28 @@ interface ApiService {
 
 	@GET("api/reports/s4")
 	suspend fun s4People(): Response<S4ListResponse>
+
+	@GET("api/reports/groups")
+	suspend fun groupReports(@Query("year") year: Int, @Query("month") month: Int): Response<GroupReportsResponse>
+
+	@GET("api/reports/s4/service-year")
+	suspend fun serviceYear(): Response<ServiceYearResponse>
+
+	// --- Escrituras guardadas sin internet (cola): el cuerpo ya viene armado y cada operación lleva su clave de idempotencia. ---
+	@POST("api/reports/s4")
+	suspend fun sendQueuedReport(@Header("Idempotency-Key") key: String, @Body body: RequestBody): Response<ResponseBody>
+
+	@POST("api/attendance")
+	suspend fun sendQueuedAttendance(@Header("Idempotency-Key") key: String, @Body body: RequestBody): Response<ResponseBody>
+
+	@POST("api/territories/assignments/{id}/resolve")
+	suspend fun sendQueuedResolve(@Path("id") id: String, @Header("Idempotency-Key") key: String, @Body body: RequestBody): Response<ResponseBody>
+
+	@POST("api/notifications/{id}/dismiss")
+	suspend fun sendQueuedDismiss(@Path("id") id: String, @Header("Idempotency-Key") key: String): Response<ResponseBody>
+
+	@GET("api/attendance")
+	suspend fun attendanceOne(@Query("meetingType") meetingType: String, @Query("meetingId") meetingId: String): Response<AttendanceOneResponse>
 
 	@GET("api/publishers/{id}")
 	suspend fun publisher(@Path("id") id: String): Response<PublisherItem>

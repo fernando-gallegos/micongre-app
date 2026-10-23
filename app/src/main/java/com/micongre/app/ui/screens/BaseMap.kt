@@ -81,6 +81,36 @@ suspend fun loadBaseStyle(): String? {
 	}
 }
 
+/**
+ * Liga el mapa al ciclo de vida de la pantalla: cuando la app pasa a segundo plano o se apaga la pantalla el mapa se PAUSA (deja de dibujar y de
+ * pedir teselas), y se reanuda al volver. Antes seguía activo mientras el diálogo del mapa estuviera abierto aunque la app no se viera: gasto de batería.
+ */
+@Composable
+fun BindMapLifecycle(mapView: MapView) {
+	val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+	DisposableEffect(mapView, owner) {
+		var started = false
+		var resumed = false
+		mapView.onCreate(null)
+		val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+			when (event) {
+				androidx.lifecycle.Lifecycle.Event.ON_START -> if (!started) { started = true; mapView.onStart() }
+				androidx.lifecycle.Lifecycle.Event.ON_RESUME -> if (!resumed) { resumed = true; mapView.onResume() }
+				androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> if (resumed) { resumed = false; mapView.onPause() }
+				androidx.lifecycle.Lifecycle.Event.ON_STOP -> if (started) { started = false; mapView.onStop() }
+				else -> Unit
+			}
+		}
+		owner.lifecycle.addObserver(observer) // al agregarlo recibe los eventos hasta el estado actual (START y RESUME si ya está visible)
+		onDispose {
+			owner.lifecycle.removeObserver(observer)
+			if (resumed) mapView.onPause()
+			if (started) mapView.onStop()
+			mapView.onDestroy()
+		}
+	}
+}
+
 /** Mapa base con el dibujo del territorio encima (polígonos, líneas, puntos y textos); ajusta la cámara para que quepa todo. */
 @Composable
 fun BaseMapView(styleJson: String, geoJson: String, points: List<Pair<Double, Double>>, accentHex: String) {
@@ -91,16 +121,7 @@ fun BaseMapView(styleJson: String, geoJson: String, points: List<Pair<Double, Do
 		MapView(context, MapLibreMapOptions.createFromAttributes(context).textureMode(true))
 	}
 
-	DisposableEffect(mapView) {
-		mapView.onCreate(null)
-		mapView.onStart()
-		mapView.onResume()
-		onDispose {
-			mapView.onPause()
-			mapView.onStop()
-			mapView.onDestroy()
-		}
-	}
+	BindMapLifecycle(mapView)
 
 	AndroidView(
 		factory = {

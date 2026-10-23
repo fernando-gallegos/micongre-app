@@ -53,7 +53,8 @@ fun ensureChannel(context: Context) {
 }
 
 private const val FAST_WORK_NAME = "micongre-sync-fast"
-private val NETWORK = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+// Con red y sin batería baja: la revisión de fondo no despierta el teléfono cuando le queda poca carga.
+private val NETWORK = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build()
 
 /**
  * Programa la revisión mientras haya sesión iniciada. Android no permite tareas periódicas de menos de 15 minutos, así que

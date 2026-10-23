@@ -9,6 +9,9 @@ import com.micongre.app.data.AuthRepository
 import com.micongre.app.data.FixedSession
 import com.micongre.app.data.NetworkStatus
 import com.micongre.app.data.OfflineCache
+import com.micongre.app.data.Outbox
+import com.micongre.app.data.OutboxDb
+import com.micongre.app.data.OutboxSender
 import com.micongre.app.data.Prefs
 
 /** Contenedor de dependencias a mano — sin Hilt/Koin, no hace falta para el
@@ -22,6 +25,8 @@ class MicongreApplication : Application() {
 		super.onCreate()
 		container = AppContainer(this)
 		com.micongre.app.push.ensureChannel(this)
+		// Lo que se guardó sin internet y quedó sin enviar (la app se cerró o el teléfono se reinició): se retoma al abrir.
+		if (container.outbox.ops.value.any { it.state == com.micongre.app.data.OpState.PENDING }) com.micongre.app.push.OutboxScheduler.kick(this)
 	}
 }
 
@@ -31,7 +36,17 @@ class AppContainer(val app: Application) {
 	val authRepository = AuthRepository(accounts, prefs)
 
 	/** Lecturas guardadas en el teléfono (cifradas, por cuenta) para abrir la app sin internet. */
-	val offlineCache = OfflineCache(java.io.File(app.filesDir, "offline"))
+	val offlineCache = OfflineCache(java.io.File(app.filesDir, "offline")).also { cache ->
+		// Llegó Mi Panel nuevo: se redibujan los widgets (sin temporizador propio, para no gastar batería).
+		cache.onPut = { _, url ->
+			if (url.endsWith("/api/panel/summary")) com.micongre.app.widget.WidgetUpdater.request(app, refreshPreaching = true)
+			else if (url.contains("/api/preaching?month=") || url.endsWith("/api/reports/s4/service-year")) com.micongre.app.widget.WidgetUpdater.request(app)
+		}
+	}
+
+	/** Escrituras hechas sin internet, guardadas en el teléfono hasta que el servidor las confirme (informes, asistencia, territorios, avisos). */
+	val outbox = Outbox(OutboxDb(app))
+	val outboxSender = OutboxSender(this)
 
 	private val connectivity = app.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
 
@@ -44,7 +59,11 @@ class AppContainer(val app: Application) {
 		NetworkStatus.setConnected(isConnected())
 		try {
 			connectivity.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
-				override fun onAvailable(network: android.net.Network) = NetworkStatus.setConnected(true)
+				override fun onAvailable(network: android.net.Network) {
+					NetworkStatus.setConnected(true)
+					// Volvió internet: se envía lo que quedó pendiente.
+					if (outbox.ops.value.any { it.state == com.micongre.app.data.OpState.PENDING }) com.micongre.app.push.OutboxScheduler.kick(app)
+				}
 				override fun onLost(network: android.net.Network) = NetworkStatus.setConnected(isConnected())
 			})
 		} catch (e: Exception) {

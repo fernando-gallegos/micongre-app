@@ -179,6 +179,32 @@ private fun MainShellContent(vm: AppViewModel, container: AppContainer, me: Me, 
 				}
 			}
 		}
+		// Cambios guardados en el teléfono que todavía no están en el servidor (nada se pierde: se envían solos al haber internet).
+		PendingBanner(container)
+		val pendingLogout by vm.pendingLogout.collectAsState()
+		pendingLogout?.let { (accountId, count) ->
+			androidx.compose.material3.AlertDialog(
+				onDismissRequest = { vm.dismissPendingLogout() },
+				title = { Text("Tienes cambios sin enviar") },
+				text = {
+					Text(
+						"Hay $count cambio${if (count == 1) "" else "s"} guardado${if (count == 1) "" else "s"} en este teléfono que todavía no llegó${if (count == 1) "" else "n"} al servidor. " +
+							"Si cierras la sesión ahora se perderán. Lo mejor es esperar a tener internet para que se envíen.",
+					)
+				},
+				confirmButton = {
+					androidx.compose.material3.TextButton(onClick = {
+						vm.dismissPendingLogout()
+						com.micongre.app.push.OutboxScheduler.kick(container.app)
+					}) { Text("Enviar primero") }
+				},
+				dismissButton = {
+					androidx.compose.material3.TextButton(onClick = { vm.removeAccount(accountId, force = true) }) {
+						Text("Cerrar sesión y perderlos", color = MaterialTheme.colorScheme.error)
+					}
+				},
+			)
+		}
 		androidx.compose.material3.pulltorefresh.PullToRefreshBox(
 			isRefreshing = pulling,
 			onRefresh = {

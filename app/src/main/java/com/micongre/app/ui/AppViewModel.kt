@@ -239,6 +239,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 					loadMe()
 					scheduleSync()
 					_loggedIn.value = true
+					resumeQueued()
 					onResult(null)
 				}
 				.onFailure {
@@ -269,8 +270,16 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 				return@launch
 			}
 			container.authRepository.login(server, username, password)
-				.onSuccess { _me.value = null; loadMe(); scheduleSync(); _loggedIn.value = true }
+				.onSuccess { _me.value = null; loadMe(); scheduleSync(); _loggedIn.value = true; resumeQueued() }
 				.onFailure { _loginError.value = loginFailureMessage(it) }
+		}
+	}
+
+	/** «¿Olvidaste tu contraseña?» del login: `onResult(true)` si el servidor recibió la solicitud. */
+	fun requestPasswordHelp(identifier: String, onResult: (Boolean) -> Unit) {
+		viewModelScope.launch {
+			val server = container.prefs.currentServerUrl()
+			onResult(server != null && container.authRepository.requestPasswordHelp(server, identifier).isSuccess)
 		}
 	}
 
@@ -299,6 +308,13 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 		}
 	}
 
+	/** Con la sesión recién iniciada, lo guardado sin internet que esperaba la sesión se envía. */
+	private suspend fun resumeQueued() {
+		val id = container.accounts.activeIdNow() ?: return
+		container.outbox.resumeLogin(id)
+		com.micongre.app.push.OutboxScheduler.kick(container.app)
+	}
+
 	/** Cambia la cuenta activa (la pantalla ya pidió la huella o el PIN si estaba activado). */
 	fun switchTo(id: String) {
 		viewModelScope.launch {
@@ -310,6 +326,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 	private suspend fun activate(id: String) {
 		val account = container.accounts.get(id) ?: return
 		container.accounts.setActive(id)
+		com.micongre.app.widget.WidgetUpdater.request(container.app, force = true)
 		container.prefs.setServerUrl(account.server)
 		_serverUrl.value = account.server
 		_me.value = null
@@ -322,14 +339,32 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 		loadMe()
 	}
 
-	/** Cierra la sesión de una cuenta: ese teléfono deja de recibir sus avisos (los de las demás siguen). */
-	fun removeAccount(id: String, serverAlreadyForgotDevice: Boolean = false) {
+	private val _pendingLogout = kotlinx.coroutines.flow.MutableStateFlow<Pair<String, Int>?>(null)
+
+	/** Se intentó cerrar la sesión de una cuenta que tiene cambios guardados sin enviar: (cuenta, cuántos). La pantalla pide confirmar. */
+	val pendingLogout: kotlinx.coroutines.flow.StateFlow<Pair<String, Int>?> = _pendingLogout
+
+	fun dismissPendingLogout() {
+		_pendingLogout.value = null
+	}
+
+	/** Cierra la sesión de una cuenta: ese teléfono deja de recibir sus avisos (los de las demás siguen). Si la cuenta tiene cambios guardados sin
+	 * enviar NO se cierra: se pregunta primero (`force` = la persona confirmó que prefiere perderlos). */
+	fun removeAccount(id: String, serverAlreadyForgotDevice: Boolean = false, force: Boolean = false) {
+		val pending = container.outbox.count(id)
+		if (pending > 0 && !force && !serverAlreadyForgotDevice) {
+			_pendingLogout.value = id to pending
+			return
+		}
+		_pendingLogout.value = null
 		viewModelScope.launch {
 			// Antes de borrar la sesión: necesita estar autenticado. Si el servidor acaba de borrar la cuenta, ya no hace falta.
 			if (!serverAlreadyForgotDevice) FcmRegistrar.unregister(container, id)
 			container.accounts.remove(id)
 			container.prefs.clearSeen(id)
 			container.offlineCache.clearAccount(id)
+			container.outbox.deleteAccount(id)
+			com.micongre.app.widget.WidgetUpdater.request(container.app, force = true)
 			val next = container.accounts.all().firstOrNull { !it.expired }
 			if (next != null) {
 				if (container.accounts.activeIdNow() != next.id || _me.value?.id == id) activate(next.id)
@@ -369,7 +404,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 		removeAccount(id)
 	}
 
-	fun setAccent(key: String) = viewModelScope.launch { container.prefs.setAccent(key) }
+	fun setAccent(key: String) = viewModelScope.launch {
+		container.prefs.setAccent(key)
+		// Los widgets usan este color: se redibujan al momento.
+		com.micongre.app.widget.WidgetUpdater.request(container.app, force = true)
+	}
 	fun setDarkMode(mode: String) = viewModelScope.launch { container.prefs.setDarkMode(mode) }
 
 	/** Igual que la web: se guarda en el servidor (`PUT /api/auth/shortcut`) y vuelve a su valor si falla. */

@@ -1,5 +1,10 @@
 package com.micongre.app.ui.screens
 
+import com.micongre.app.ui.pendingTargets
+import com.micongre.app.ui.rememberPendingOps
+import com.micongre.app.ui.saved
+import com.micongre.app.ui.submitDismiss
+import com.micongre.app.ui.submitResolveTerritory
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
@@ -119,7 +124,11 @@ fun PanelScreen(container: AppContainer, me: Me, onOpenS21: () -> Unit) {
 
 	val upcoming = data?.upcoming.orEmpty()
 	val cleaning = upcoming.filter { it.meetingType == "cleaning" }
-	val mine = upcoming.filter { it.meetingType != "cleaning" }
+	// Lo que ya se completó o devolvió sin internet y espera enviarse sale de la lista de inmediato; igual con los avisos ocultados.
+	val pendingOps = rememberPendingOps(container)
+	val resolvedOffline = pendingOps.pendingTargets(com.micongre.app.data.OpKind.TERRITORY_RESOLVE, "terr:")
+	val dismissedOffline = pendingOps.pendingTargets(com.micongre.app.data.OpKind.DISMISS, "dismiss:")
+	val mine = upcoming.filter { it.meetingType != "cleaning" && it.territory?.assignmentId !in resolvedOffline }
 	val first = me.fullName.trim().split(Regex("\\s+")).firstOrNull().orEmpty()
 	val today = LocalDate.now()
 	val serverUrl by produceState<String?>(null) { value = container.prefs.currentServerUrl() }
@@ -147,12 +156,12 @@ fun PanelScreen(container: AppContainer, me: Me, onOpenS21: () -> Unit) {
 			RowList(cleaning.map { a -> { AssignmentRow(a, {}, {}) } })
 		}
 
-		val notes = notifications.data?.items.orEmpty()
+		val notes = notifications.data?.items.orEmpty().filter { it.id !in dismissedOffline }
 		if (notes.isNotEmpty()) {
 			SectionLabel("Avisos")
 			SwipeToHideList(notes.take(3), key = { it.id }, onHide = { n ->
 				scope.launch {
-					api { container.apiService.dismissNotification(n.id) }
+					container.submitDismiss(n.id)
 					notifications.reload()
 				}
 			}) { n ->
@@ -168,7 +177,7 @@ fun PanelScreen(container: AppContainer, me: Me, onOpenS21: () -> Unit) {
 						}
 						IconButton(onClick = {
 							scope.launch {
-								api { container.apiService.dismissNotification(n.id) }
+								container.submitDismiss(n.id)
 								notifications.reload()
 							}
 						}, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.Close, "Ocultar este aviso", Modifier.size(18.dp)) }
@@ -225,6 +234,8 @@ fun PanelScreen(container: AppContainer, me: Me, onOpenS21: () -> Unit) {
 				}
 			})
 		}
+
+		MyGroupSection(data?.group)
 
 		// Defensa en profundidad: el servidor ya filtra, pero el cliente también respeta los nombramientos.
 		val visibleLinks = data?.links.orEmpty().filter {
@@ -307,8 +318,9 @@ fun PanelScreen(container: AppContainer, me: Me, onOpenS21: () -> Unit) {
 			confirmButton = {
 				TextButton(onClick = {
 					scope.launch {
-						val r = api { container.apiService.resolveTerritory(ref.assignmentId, ResolveTerritoryRequest(status, comment.trim().ifBlank { null })) }
-						if (r.isSuccess) { resolve = null; summary.reload() } else failed = true
+						// Se guarda en el teléfono y se envía; sin internet queda en la cola y se manda sola (el territorio se quita de la lista de inmediato).
+						val r = container.submitResolveTerritory(ref.assignmentId, ResolveTerritoryRequest(status, comment.trim().ifBlank { null }), (if (status == "completed") "Completar el " else "Devolver el ") + a.label)
+						if (r.saved) { resolve = null; summary.reload() } else failed = true
 					}
 				}) { Text(if (status == "completed") "Completar" else "Devolver") }
 			},

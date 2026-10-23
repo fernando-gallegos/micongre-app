@@ -18,3 +18,7 @@ build/
 
 # Caches de Kotlin
 /.kotlin/
+
+# Firmas v4 que deja apksigner y clon de trabajo del repo público
+*.idsig
+/.release/

@@ -276,16 +276,7 @@ fun TerritoryMapEditor(container: AppContainer, territoryId: String, hintTerrito
 		MapLibre.getInstance(context)
 		MapView(context, MapLibreMapOptions.createFromAttributes(context).textureMode(true))
 	}
-	DisposableEffect(mapView) {
-		mapView.onCreate(null)
-		mapView.onStart()
-		mapView.onResume()
-		onDispose {
-			mapView.onPause()
-			mapView.onStop()
-			mapView.onDestroy()
-		}
-	}
+	BindMapLifecycle(mapView)
 
 	fun requestClose() {
 		if (dirty && !saving) askDiscard = true else onClose(false)

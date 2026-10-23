@@ -93,6 +93,7 @@ class MainActivity : FragmentActivity() {
 							server = serverUrl,
 							onLogin = viewModel::login,
 							onChangeServer = viewModel::changeServer,
+							onForgot = viewModel::requestPasswordHelp,
 						)
 						else -> MainShell(viewModel, container, user)
 					}

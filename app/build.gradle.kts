@@ -75,7 +75,12 @@ android {
 		}
 		release {
 			buildConfigField("String", "BASE_URL", "\"https://tu-congregacion.micongre.app/\"")
-			isMinifyEnabled = false
+			// R8 completo: ofusca y reduce el código y quita recursos sin uso (Google Play pide una ofuscación alta). El mapping.txt
+			// se genera con cada build y el .aab lo lleva dentro para que Play desofusque los errores.
+			isMinifyEnabled = true
+			isShrinkResources = true
+			// Símbolos de las bibliotecas nativas (MapLibre) para los informes de fallos de Play.
+			ndk { debugSymbolLevel = "SYMBOL_TABLE" }
 			signingConfigs.findByName("release")?.let { signingConfig = it }
 			proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
 		}
@@ -112,6 +117,8 @@ dependencies {
 
 	implementation("androidx.datastore:datastore-preferences:1.1.1")
 	implementation("androidx.work:work-runtime-ktx:2.9.1")
+	// Widgets de la pantalla de inicio (pequeño y grande), dibujados con Compose.
+	implementation("androidx.glance:glance-appwidget:1.1.1")
 	implementation("androidx.biometric:biometric:1.1.0")
 
 	// Push en tiempo real (Firebase Cloud Messaging). Solo se activa si se agrega app/google-services.json y el sitio de la

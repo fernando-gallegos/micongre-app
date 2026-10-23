@@ -12,6 +12,12 @@ class AuthRepository(private val accounts: AccountStore, private val prefs: Pref
 		auth
 	}
 
+	/** Pide ayuda por una contraseña olvidada: el servidor avisa a quien puede generar un enlace nuevo (responde igual exista o no la cuenta). */
+	suspend fun requestPasswordHelp(server: String, identifier: String): Result<Unit> = runCatching {
+		val response = ApiClient(AnonymousSession(server)).service.forgotPassword(ForgotPasswordRequest(identifier.trim()))
+		if (!response.isSuccessful) error("forgot_failed_${response.code()}")
+	}
+
 	suspend fun previewActivation(server: String, token: String): Result<ActivatePreviewResponse> = runCatching {
 		val response = ApiClient(AnonymousSession(server)).service.previewActivation(token)
 		if (!response.isSuccessful) error("invalid_token_${response.code()}")

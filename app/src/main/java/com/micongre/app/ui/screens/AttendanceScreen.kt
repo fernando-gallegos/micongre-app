@@ -58,25 +58,43 @@ import com.micongre.app.ui.SectionLabel
 import com.micongre.app.ui.rememberLoad
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import com.micongre.app.data.isoVersion
+import com.micongre.app.ui.note
+import com.micongre.app.ui.pendingAttendance
+import com.micongre.app.ui.rememberPendingOps
+import com.micongre.app.ui.saved as wasSaved
+import com.micongre.app.ui.submitAttendance
 
 /** Mismo criterio que en la web: admin, o el privilegio "Registro de asistencia" (todo anciano lo tiene por defecto). */
 fun canRecordAttendance(me: Me) = me.has("meeting_attendance_recorder")
 
-/** Informes: sin la persona objetivo, si puede registrar asistencia se ofrecen las pestañas Tarjeta S-21 / Asistencia. */
+/** Quién ve la pestaña «Grupos»: los mismos que pueden revisar informes de otras personas (el servidor acota a su grupo). */
+fun canSeeGroupReports(me: Me) = me.has("field_service_reports", "reports_all", "reports_group") ||
+	me.hasAppointment("field_service_group_overseer", "field_service_group_assistant")
+
+/** Informes: sin la persona objetivo se ofrecen las pestañas Tarjetas / Grupos / Asistencia, según lo que pueda ver. */
 @Composable
 fun ReportsHost(container: AppContainer, me: Me, userId: String?, onPickPublisher: (String) -> Unit) {
-	if (userId != null || !canRecordAttendance(me)) {
+	val tabs = buildList {
+		add("s21" to "Tarjetas")
+		if (canSeeGroupReports(me)) add("groups" to "Grupos")
+		if (canRecordAttendance(me)) add("attendance" to "Asistencia")
+	}
+	if (userId != null || tabs.size == 1) {
 		ReportsScreen(container, me, userId, onPickPublisher)
 		return
 	}
 	var tab by remember { mutableStateOf("s21") }
 	Column(Modifier.fillMaxSize()) {
 		Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-			FilterChip(selected = tab == "s21", onClick = { tab = "s21" }, label = { Text("Tarjeta S-21") })
-			FilterChip(selected = tab == "attendance", onClick = { tab = "attendance" }, label = { Text("Asistencia") })
+			tabs.forEach { (key, label) -> FilterChip(selected = tab == key, onClick = { tab = key }, label = { Text(label) }) }
 		}
 		Box(Modifier.weight(1f)) {
-			if (tab == "s21") ReportsScreen(container, me, null, onPickPublisher) else AttendanceScreen(container)
+			when (tab) {
+				"groups" -> GroupReportsScreen(container)
+				"attendance" -> AttendanceScreen(container)
+				else -> ReportsScreen(container, me, null, onPickPublisher)
+			}
 		}
 	}
 }
@@ -197,7 +215,10 @@ fun AttendanceScreen(container: AppContainer) {
 		EmptyText("No se pudo cargar la asistencia.", Modifier.padding(16.dp))
 		return
 	}
-	val counts = data.third.associate { "${it.meetingType}-${it.meetingId}" to (it.inPersonCount to it.zoomCount) } + saved
+	// Versión de cada registro (para detectar que alguien más lo cambió mientras se guardaba sin internet) y lo guardado sin enviar.
+	val versions = data.third.associate { "${it.meetingType}-${it.meetingId}" to isoVersion(it.recordedAt) }
+	val pendingOps = rememberPendingOps(container)
+	val counts = data.third.associate { "${it.meetingType}-${it.meetingId}" to (it.inPersonCount to it.zoomCount) } + pendingOps.pendingAttendance() + saved
 	val rows = (data.first + data.second)
 		.filter { it.third <= to }
 		.map { (type, id, date) ->
@@ -221,6 +242,7 @@ fun AttendanceScreen(container: AppContainer) {
 			var saving by remember(selected.key) { mutableStateOf(false) }
 			var done by remember(selected.key) { mutableStateOf(false) }
 			var error by remember(selected.key) { mutableStateOf<String?>(null) }
+			var info by remember(selected.key) { mutableStateOf<String?>(null) }
 			Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
 				Text(
 					"${selected.label} · ${Fmt.longDate(selected.date)}",
@@ -230,6 +252,7 @@ fun AttendanceScreen(container: AppContainer) {
 				Counter("Presentes en el salón", inPerson, { inPerson = it; done = false }, big = true)
 				Counter("Conectados por Zoom", zoom, { zoom = it; done = false }, big = false)
 				error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+				info?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
 				Button(
 					enabled = !saving,
 					modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -239,15 +262,17 @@ fun AttendanceScreen(container: AppContainer) {
 						done = false
 						scope.launch {
 							val body = AttendanceRequest(selected.type, selected.id, selected.date, inPerson.toIntOrNull() ?: 0, zoom.toIntOrNull() ?: 0)
-							val ok = api { container.apiService.saveAttendance(body) }.isSuccess
+							// Se guarda primero en el teléfono (confirmado en disco) y se envía; sin internet queda en la cola y se manda sola.
+							val result = container.submitAttendance(body, versions[selected.key], "Asistencia · ${selected.label} ${Fmt.longDate(selected.date)}")
 							saving = false
-							if (ok) {
+							if (result.wasSaved) {
 								saved = saved + (selected.key to (body.inPersonCount to body.zoomCount))
 								done = true
+								info = result.note()
 								summary.reload()
 								state.reload()
 							} else {
-								error = "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo."
+								error = result.note() ?: "No se pudo guardar. Inténtalo de nuevo."
 							}
 						}
 					},

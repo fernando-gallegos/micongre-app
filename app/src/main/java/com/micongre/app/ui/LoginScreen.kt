@@ -2,6 +2,8 @@ package com.micongre.app.ui
 
 import android.view.autofill.AutofillManager
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
@@ -36,9 +38,17 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun LoginScreen(error: String?, server: String?, onLogin: (String, String) -> Unit, onChangeServer: () -> Unit) {
+fun LoginScreen(
+	error: String?,
+	server: String?,
+	onLogin: (String, String) -> Unit,
+	onChangeServer: () -> Unit,
+	onForgot: (String, (Boolean) -> Unit) -> Unit = { _, _ -> },
+) {
 	var username by remember { mutableStateOf("") }
 	var password by remember { mutableStateOf("") }
+	var showPassword by remember { mutableStateOf(false) }
+	var forgotOpen by remember { mutableStateOf(false) }
 	var submitted by remember { mutableStateOf(false) }
 
 	// Autocompletado (Google, 1Password, Bitwarden...): los campos se declaran como usuario y contraseña; al entrar con éxito
@@ -71,7 +81,16 @@ fun LoginScreen(error: String?, server: String?, onLogin: (String, String) -> Un
 			value = password,
 			onValueChange = { password = it },
 			label = { Text("Contraseña") },
-			visualTransformation = PasswordVisualTransformation(),
+			visualTransformation = if (showPassword) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+			// Ojo para ver lo que se escribe.
+			trailingIcon = {
+				androidx.compose.material3.IconButton(onClick = { showPassword = !showPassword }) {
+					androidx.compose.material3.Icon(
+						if (showPassword) androidx.compose.material.icons.Icons.Filled.VisibilityOff else androidx.compose.material.icons.Icons.Filled.Visibility,
+						if (showPassword) "Ocultar contraseña" else "Mostrar contraseña",
+					)
+				}
+			},
 			modifier = Modifier.fillMaxWidth().padding(top = 12.dp).semantics { contentType = ContentType.Password },
 			singleLine = true,
 			keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -100,5 +119,48 @@ fun LoginScreen(error: String?, server: String?, onLogin: (String, String) -> Un
 		) {
 			Text("Ingresar")
 		}
+		if (server != null) {
+			androidx.compose.material3.TextButton(onClick = { forgotOpen = true }, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp)) {
+				Text("¿Olvidaste tu contraseña?")
+			}
+		}
 	}
+
+	if (forgotOpen) ForgotPasswordDialog(initial = username, onSend = onForgot, onDismiss = { forgotOpen = false })
+}
+
+/** Igual que en la web: avisa a quien puede generar un enlace nuevo; la respuesta es la misma exista o no la cuenta. */
+@Composable
+private fun ForgotPasswordDialog(initial: String, onSend: (String, (Boolean) -> Unit) -> Unit, onDismiss: () -> Unit) {
+	var identifier by remember { mutableStateOf(initial) }
+	var state by remember { mutableStateOf("idle") }
+	androidx.compose.material3.AlertDialog(
+		onDismissRequest = onDismiss,
+		title = { Text(if (state == "sent") "Listo, pedimos ayuda por ti" else "¿Olvidaste tu contraseña?") },
+		text = {
+			Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+				if (state == "sent") {
+					Text("Si los datos coinciden con una persona de la congregación, le avisamos a tu superintendente de grupo y a quien administra las cuentas. Te enviarán un enlace nuevo (por WhatsApp o en persona); al abrirlo verás tu usuario y una contraseña nueva.")
+				} else {
+					Text("Escribe tu usuario o tu nombre completo. Avisaremos a tu superintendente de grupo y a quien administra las cuentas para que te envíen un enlace nuevo.")
+					OutlinedTextField(identifier, { identifier = it.take(120) }, label = { Text("Usuario o nombre completo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+					if (state == "error") Text("No se pudo enviar. Revisa tu conexión e intenta de nuevo.", color = MaterialTheme.colorScheme.error)
+				}
+			}
+		},
+		confirmButton = {
+			if (state == "sent") {
+				androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Entendido") }
+			} else {
+				androidx.compose.material3.TextButton(
+					enabled = state != "sending" && identifier.trim().length >= 2,
+					onClick = {
+						state = "sending"
+						onSend(identifier) { ok -> state = if (ok) "sent" else "error" }
+					},
+				) { Text(if (state == "sending") "Enviando…" else "Pedir ayuda") }
+			}
+		},
+		dismissButton = { if (state != "sent") androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancelar") } },
+	)
 }

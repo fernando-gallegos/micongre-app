@@ -1,6 +1,9 @@
 package com.micongre.app.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -127,8 +130,9 @@ fun ReportsScreen(container: AppContainer, me: Me, userId: String?, onPickPublis
 			IconButton(enabled = sy < serviceYearOf(today), onClick = { sy += 1 }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Año siguiente") }
 		}
 
+		// La tabla tiene un ancho cómodo (columnas fijas) y se desliza de lado si la pantalla no alcanza.
 		AppCard {
-			Column {
+			Column(Modifier.horizontalScroll(rememberScrollState())) {
 				HeaderRow(showProject)
 				months.forEach { (y, m) ->
 					val r = byMonth[y * 100 + m]
@@ -140,11 +144,11 @@ fun ReportsScreen(container: AppContainer, me: Me, userId: String?, onPickPublis
 				}
 				val totalHours = yearReports.sumOf { it.hours ?: 0.0 }
 				val totalProject = yearReports.sumOf { it.projectHours ?: 0.0 }
-				Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
-					Text("Total", Modifier.weight(3.1f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-					Text(Fmt.hours(totalHours).ifBlank { "0" }, Modifier.weight(1.1f), fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center)
-					if (showProject) Text(Fmt.hours(totalProject).ifBlank { "0" }, Modifier.weight(1.1f), fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center)
-					Text("", Modifier.weight(2f))
+				Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+					Text("Total", Modifier.width(MONTH_W + NUM_W * 3), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+					Text(Fmt.hours(totalHours).ifBlank { "0" }, Modifier.width(HOURS_W), fontWeight = FontWeight.Bold, fontSize = 13.sp, textAlign = TextAlign.Center)
+					if (showProject) Text(Fmt.hours(totalProject).ifBlank { "0" }, Modifier.width(HOURS_W), fontWeight = FontWeight.Bold, fontSize = 13.sp, textAlign = TextAlign.Center)
+					Spacer(Modifier.width(NOTES_W))
 				}
 			}
 		}
@@ -183,30 +187,36 @@ private fun InfoLine(label: String, value: String) {
 
 @Composable
 private fun HeaderRow(showProject: Boolean) {
-	Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-		val s = 10.sp
-		Text("Mes", Modifier.weight(1.7f), fontSize = s, fontWeight = FontWeight.Bold)
-		Text("Part.", Modifier.weight(0.7f), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-		Text("Cursos", Modifier.weight(0.7f), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-		Text("Aux.", Modifier.weight(0.7f), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-		Text("Horas", Modifier.weight(1.1f), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-		if (showProject) Text("Proy.", Modifier.weight(1.1f), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-		Text("Notas", Modifier.weight(2f), fontSize = s, fontWeight = FontWeight.Bold)
+	Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom) {
+		val s = 11.sp
+		Text("Mes", Modifier.width(MONTH_W), fontSize = s, fontWeight = FontWeight.Bold)
+		Text("Participó", Modifier.width(NUM_W), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+		Text("Cursos bíblicos", Modifier.width(NUM_W), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+		Text("Precursor auxiliar", Modifier.width(NUM_W), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+		Text("Horas", Modifier.width(HOURS_W), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+		if (showProject) Text("Horas de proyectos", Modifier.width(HOURS_W), fontSize = s, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+		Text("Notas", Modifier.width(NOTES_W), fontSize = s, fontWeight = FontWeight.Bold)
 	}
 }
+
+// Anchos fijos de la tabla S-21 (la tabla se desliza de lado si no cabe).
+private val MONTH_W = 64.dp
+private val NUM_W = 76.dp
+private val HOURS_W = 76.dp
+private val NOTES_W = 200.dp
 
 @Composable
 private fun MonthRow(name: String, report: ServiceReport?, showProject: Boolean, onClick: (() -> Unit)?) {
 	val s = 12.sp
-	val base = Modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }
+	val base = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
 	Row(base.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-		Text(name, Modifier.weight(1.7f), fontSize = s)
-		Text(if (report?.participatedInMinistry == true) "✓" else "", Modifier.weight(0.7f), fontSize = s, textAlign = TextAlign.Center)
-		Text(report?.bibleStudiesCount?.takeIf { it > 0 }?.toString() ?: "", Modifier.weight(0.7f), fontSize = s, textAlign = TextAlign.Center)
-		Text(if (report?.isAuxiliaryPioneerThisMonth == true) "✓" else "", Modifier.weight(0.7f), fontSize = s, textAlign = TextAlign.Center)
-		Text(Fmt.hours(report?.hours), Modifier.weight(1.1f), fontSize = s, textAlign = TextAlign.Center)
-		if (showProject) Text(Fmt.hours(report?.projectHours), Modifier.weight(1.1f), fontSize = s, textAlign = TextAlign.Center)
-		Text(listOfNotNull(report?.creditHoursNote, report?.comments).filter { it.isNotBlank() }.joinToString(" · "), Modifier.weight(2f), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+		Text(name, Modifier.width(MONTH_W), fontSize = s)
+		Text(if (report?.participatedInMinistry == true) "✓" else "", Modifier.width(NUM_W), fontSize = s, textAlign = TextAlign.Center)
+		Text(report?.bibleStudiesCount?.takeIf { it > 0 }?.toString() ?: "", Modifier.width(NUM_W), fontSize = s, textAlign = TextAlign.Center)
+		Text(if (report?.isAuxiliaryPioneerThisMonth == true) "✓" else "", Modifier.width(NUM_W), fontSize = s, textAlign = TextAlign.Center)
+		Text(Fmt.hours(report?.hours), Modifier.width(HOURS_W), fontSize = s, textAlign = TextAlign.Center)
+		if (showProject) Text(Fmt.hours(report?.projectHours), Modifier.width(HOURS_W), fontSize = s, textAlign = TextAlign.Center)
+		Text(listOfNotNull(report?.creditHoursNote, report?.comments).filter { it.isNotBlank() }.joinToString(" · "), Modifier.width(NOTES_W), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 	}
 }
 

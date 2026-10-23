@@ -48,5 +48,43 @@
 				<action android:name="com.google.firebase.MESSAGING_EVENT" />
 			</intent-filter>
 		</service>
+
+		<!-- Widgets de la pantalla de inicio (Glance): pequeño y grande. Sin temporizador propio; ver widget/MiCongreWidgets.kt. -->
+		<receiver
+			android:name=".widget.SmallWidgetReceiver"
+			android:label="@string/widget_small_label"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+			</intent-filter>
+			<meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_small_info" />
+		</receiver>
+		<receiver
+			android:name=".widget.LargeWidgetReceiver"
+			android:label="@string/widget_large_label"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+			</intent-filter>
+			<meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_large_info" />
+		</receiver>
+		<receiver
+			android:name=".widget.PreachingWidgetReceiver"
+			android:label="@string/widget_preaching_label"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+			</intent-filter>
+			<meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_preaching_info" />
+		</receiver>
+		<receiver
+			android:name=".widget.PioneerWidgetReceiver"
+			android:label="@string/widget_pioneer_label"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+			</intent-filter>
+			<meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pioneer_info" />
+		</receiver>
 	</application>
 </manifest>

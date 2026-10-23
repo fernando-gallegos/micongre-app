@@ -1,3 +1,11 @@
 <resources>
 	<string name="app_name">Mi Congre</string>
+	<string name="widget_small_label">Mi Congre: próxima asignación</string>
+	<string name="widget_small_description">Tu próxima asignación de un vistazo.</string>
+	<string name="widget_large_label">Mi Congre: mis asignaciones</string>
+	<string name="widget_large_description">La lista de tus próximas asignaciones.</string>
+	<string name="widget_preaching_label">Mi Congre: predicación</string>
+	<string name="widget_preaching_description">Dónde es la siguiente predicación: territorio y quién lo tiene.</string>
+	<string name="widget_pioneer_label">Mi Congre: precursorado</string>
+	<string name="widget_pioneer_description">Tus horas del año de servicio (de 0 a 600), por mes y en total. Se agranda para ver más.</string>
 </resources>

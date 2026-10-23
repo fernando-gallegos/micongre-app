@@ -41,6 +41,9 @@ object NetworkStatus {
 /** Respuestas del servidor guardadas en el teléfono, por cuenta y cifradas con la clave del Keystore (los datos son personales).
  * Sirve para abrir la app y ver lo último conocido sin internet. */
 class OfflineCache(private val root: File) {
+	/** Se llama después de guardar una respuesta; la app lo usa para redibujar el widget cuando llega Mi Panel nuevo. */
+	var onPut: ((account: String, url: String) -> Unit)? = null
+
 	private fun dir(account: String) = File(root, account.filter { it.isLetterOrDigit() || it == '-' || it == '_' })
 
 	private fun fileName(url: String): String =
@@ -51,6 +54,7 @@ class OfflineCache(private val root: File) {
 			val d = dir(account).apply { mkdirs() }
 			File(d, fileName(url)).writeText(SecureStore.encrypt(body))
 			trim(d)
+			onPut?.invoke(account, url)
 		} catch (e: Exception) {
 			// El caché es solo una ayuda: si no se puede guardar, la app sigue igual.
 		}

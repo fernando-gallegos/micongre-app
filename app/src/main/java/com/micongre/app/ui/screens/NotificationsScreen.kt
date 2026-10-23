@@ -1,5 +1,8 @@
 package com.micongre.app.ui.screens
 
+import com.micongre.app.ui.pendingTargets
+import com.micongre.app.ui.rememberPendingOps
+import com.micongre.app.ui.submitDismiss
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -99,7 +102,9 @@ fun NotificationsScreen(container: AppContainer, me: Me) {
 private fun ReceivedList(container: AppContainer) {
 	val scope = rememberCoroutineScope()
 	val state = rememberLoad("notifications") { api { container.apiService.notifications() } }
-	val items = state.data?.items.orEmpty()
+	// Los avisos ocultados sin internet esperan en la cola: se quitan de la lista de inmediato.
+	val dismissedOffline = rememberPendingOps(container).pendingTargets(com.micongre.app.data.OpKind.DISMISS, "dismiss:")
+	val items = state.data?.items.orEmpty().filter { it.id !in dismissedOffline }
 
 	Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
 		if (state.loading && state.data == null) {
@@ -109,7 +114,7 @@ private fun ReceivedList(container: AppContainer) {
 		} else {
 			SwipeToHideList(items, key = { it.id }, onHide = { n ->
 				scope.launch {
-					api { container.apiService.dismissNotification(n.id) }
+					container.submitDismiss(n.id)
 					state.reload()
 				}
 			}) { n ->
@@ -125,7 +130,7 @@ private fun ReceivedList(container: AppContainer) {
 					}
 					IconButton(onClick = {
 						scope.launch {
-							api { container.apiService.dismissNotification(n.id) }
+							container.submitDismiss(n.id)
 							state.reload()
 						}
 					}, modifier = Modifier.size(32.dp)) { Icon(Icons.Filled.Close, "Ocultar este aviso", Modifier.size(18.dp)) }

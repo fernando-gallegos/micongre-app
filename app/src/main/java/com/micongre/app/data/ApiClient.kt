@@ -75,32 +75,44 @@ class ApiClient(
 
 	private val authenticator = Authenticator { _: Route?, response: okhttp3.Response ->
 		if (response.request.header("X-Retry") != null) return@Authenticator null
+		val accountId = runBlocking { session.accountId() } ?: return@Authenticator null
+		val usedAccess = response.request.header("Authorization")?.removePrefix("Bearer ")
 
-		val refreshToken = runBlocking { session.refreshToken() } ?: return@Authenticator null
+		// Una sola renovación a la vez por cuenta, en toda la app: la pantalla, el trabajo de fondo y los widgets usan clientes distintos, y
+		// varias peticiones paralelas reciben 401 juntas. Si cada una renovara con el mismo token, el servidor vería un token ya rotado
+		// («reusado»), lo tomaría como robo y cerraría TODAS las sesiones de esa persona: eso era la «Sesión vencida» de las cuentas guardadas.
+		val newAccess = synchronized(RefreshLocks.of(accountId)) {
+			// Otra petición ya la renovó mientras esta esperaba: se usa ese token, sin volver a renovar.
+			val current = runBlocking { session.access() }
+			if (current != null && current != usedAccess) return@synchronized current
 
-		val body = json.encodeToString(RefreshRequest.serializer(), RefreshRequest(refreshToken))
-			.toRequestBody("application/json".toMediaType())
-		val request = Request.Builder()
-			.url((runBlocking { session.server() } ?: BuildConfig.BASE_URL) + "api/auth/refresh")
-			.post(body)
-			.build()
+			val refreshToken = runBlocking { session.refreshToken() } ?: return@Authenticator null
+			val body = json.encodeToString(RefreshRequest.serializer(), RefreshRequest(refreshToken))
+				.toRequestBody("application/json".toMediaType())
+			val request = Request.Builder()
+				.url((runBlocking { session.server() } ?: BuildConfig.BASE_URL) + "api/auth/refresh")
+				.post(body)
+				.build()
 
-		val refreshResponse = plainClient.newCall(request).execute()
-		if (!refreshResponse.isSuccessful) {
-			// refresh_token_reused u otro 401 — la sesión no se puede recuperar sola: se marca vencida y sus datos guardados se borran.
-			runBlocking {
-				val id = session.accountId()
-				session.expire()
-				if (id != null) cache?.clearAccount(id)
+			val refreshResponse = plainClient.newCall(request).execute()
+			if (refreshResponse.code == 401) {
+				// El servidor rechazó la sesión (vencida, revocada o reusada): no se puede recuperar sola; se marca vencida y sus datos guardados se borran.
+				runBlocking {
+					session.expire()
+					cache?.clearAccount(accountId)
+				}
+				return@Authenticator null
 			}
-			return@Authenticator null
+			// Cualquier otro error (servidor caído, 5xx de Cloudflare…) NO vence la sesión: la petición falla y se reintenta después.
+			if (!refreshResponse.isSuccessful) return@Authenticator null
+
+			val parsed = json.decodeFromString(RefreshResponse.serializer(), refreshResponse.body?.string() ?: "{}")
+			runBlocking { session.update(parsed.accessToken, parsed.refreshToken) }
+			parsed.accessToken
 		}
 
-		val parsed = json.decodeFromString(RefreshResponse.serializer(), refreshResponse.body?.string() ?: "{}")
-		runBlocking { session.update(parsed.accessToken, parsed.refreshToken) }
-
 		response.request.newBuilder()
-			.header("Authorization", "Bearer ${parsed.accessToken}")
+			.header("Authorization", "Bearer $newAccess")
 			.header("X-Retry", "1")
 			.build()
 	}
@@ -133,4 +145,10 @@ class ApiClient(
 		.addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
 		.build()
 		.create(ApiService::class.java)
+}
+
+/** Un candado por cuenta para que la renovación del token sea de una en una (ver el Authenticator de [ApiClient]). */
+object RefreshLocks {
+	private val locks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+	fun of(accountId: String): Any = locks.getOrPut(accountId) { Any() }
 }

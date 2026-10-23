@@ -10,6 +10,10 @@ import kotlinx.serialization.json.JsonElement
 @Serializable
 data class LoginRequest(val username: String, val password: String, val clientType: String = "mobile")
 
+/** «¿Olvidaste tu contraseña?»: usuario o nombre completo (ver POST /api/auth/forgot en la web). */
+@Serializable
+data class ForgotPasswordRequest(val identifier: String)
+
 @Serializable
 data class ActivatePreviewResponse(
 	val fullName: String,
@@ -81,7 +85,7 @@ data class PanelAssignment(
 )
 
 @Serializable
-data class GroupMember(val id: String, val fullName: String, val activeAppointmentTypes: List<String> = emptyList())
+data class GroupMember(val id: String, val fullName: String, val phone: String? = null, val activeAppointmentTypes: List<String> = emptyList())
 
 @Serializable
 data class PanelGroup(
@@ -341,6 +345,8 @@ data class ServiceReport(
 	val bibleStudiesCount: Int? = null,
 	val creditHoursNote: String? = null,
 	val comments: String? = null,
+	/** Cuándo se envió (ISO): es la versión del informe para detectar choques al enviar lo guardado sin internet. */
+	val submittedAt: String? = null,
 )
 
 @Serializable
@@ -416,10 +422,23 @@ data class S4SaveRequest(
 	val comments: String? = null,
 )
 
+/** Horas de un mes del año de servicio (servicio + proyectos). */
+@Serializable
+data class ServiceYearMonth(val year: Int, val month: Int, val hours: Double = 0.0)
+
+/** Horas del año de servicio en curso (septiembre a agosto) de quien usa la app; `months` va en ese orden. */
+@Serializable
+data class ServiceYearResponse(
+	val isRegularPioneer: Boolean = false,
+	val serviceYear: Int = 0,
+	val hours: Double = 0.0,
+	val months: List<ServiceYearMonth> = emptyList(),
+)
+
 // --- Predicación (calendario de solo lectura) ---
 
 @Serializable
-data class PreachingTerritory(val number: String, val name: String? = null)
+data class PreachingTerritory(val number: String, val name: String? = null, val assigneeName: String? = null)
 
 @Serializable
 data class PreachingGroup(val name: String)
@@ -539,7 +558,17 @@ data class AssignTerritoryRequest(val assigneeUserId: String)
 
 /** Cifras ya registradas de una reunión; `meetingType` es "midweek" o "weekend". */
 @Serializable
-data class AttendanceItem(val meetingType: String, val meetingId: String, val inPersonCount: Int = 0, val zoomCount: Int = 0)
+data class AttendanceItem(
+	val meetingType: String,
+	val meetingId: String,
+	val inPersonCount: Int = 0,
+	val zoomCount: Int = 0,
+	/** Cuándo se registró (ISO): es la versión del registro para detectar choques al enviar lo guardado sin internet. */
+	val recordedAt: String? = null,
+)
+
+@Serializable
+data class AttendanceOneResponse(val item: AttendanceItem? = null)
 
 @Serializable
 data class AttendanceListResponse(val items: List<AttendanceItem> = emptyList())
@@ -574,3 +603,24 @@ data class PublishersResponse(
 	val nextCursor: Int? = null,
 	val canViewProgress: Boolean = false,
 )
+
+/** Informes de un mes agrupados por grupo de servicio (pestaña «Grupos» de Informes). */
+@Serializable
+data class GroupReportItem(
+	val userId: String,
+	val fullName: String,
+	val reportId: String? = null,
+	val participatedInMinistry: Boolean? = null,
+	val isAuxiliaryPioneerThisMonth: Boolean? = null,
+	val hours: Double? = null,
+	val projectHours: Double? = null,
+	val bibleStudiesCount: Int? = null,
+	val comments: String? = null,
+	val pioneerType: String? = null,
+)
+
+@Serializable
+data class GroupReports(val id: String? = null, val name: String, val items: List<GroupReportItem> = emptyList())
+
+@Serializable
+data class GroupReportsResponse(val groups: List<GroupReports> = emptyList())

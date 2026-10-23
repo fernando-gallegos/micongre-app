@@ -33,6 +33,11 @@ import com.micongre.app.AppContainer
 import com.micongre.app.data.MyReportResponse
 import com.micongre.app.data.S4SaveRequest
 import com.micongre.app.data.api
+import com.micongre.app.data.isoVersion
+import com.micongre.app.ui.note
+import com.micongre.app.ui.rememberPendingOps
+import com.micongre.app.ui.saved
+import com.micongre.app.ui.submitReport
 import com.micongre.app.ui.Badge
 import com.micongre.app.ui.Fmt
 import com.micongre.app.ui.Loading
@@ -67,6 +72,9 @@ fun MyReportsCard(container: AppContainer, userId: String) {
 	}
 	var editing by remember { mutableStateOf<Pair<Month, MyReportResponse>?>(null) }
 	val warn = AppColors.extras
+	// Lo guardado en el teléfono que todavía no está en el servidor, y el mensaje tras guardar sin internet.
+	val pending = rememberPendingOps(container)
+	var savedNote by remember { mutableStateOf<String?>(null) }
 
 	val rows = state.data
 	if (state.loading && rows == null) {
@@ -90,13 +98,18 @@ fun MyReportsCard(container: AppContainer, userId: String) {
 						)
 					}
 				}
-				if (r.report != null) Badge("Enviado") else Badge("Sin enviar", warn.warn, warn.warnSoft)
+				if (pending.any { it.targetKey == "report:$userId:${m.year}:${m.month}" }) Badge("Por enviar", warn.warn, warn.warnSoft)
+				else if (r.report != null) Badge("Enviado") else Badge("Sin enviar", warn.warn, warn.warnSoft)
 				IconButton(onClick = { editing = m to r }) {
 					Icon(if (r.report != null) Icons.Filled.Edit else Icons.Filled.Send, if (r.report != null) "Editar informe" else "Enviar informe")
 				}
 			}
 		}
 	})
+
+	savedNote?.let {
+		Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = androidx.compose.ui.Modifier.padding(top = 8.dp, start = 4.dp))
+	}
 
 	editing?.let { (m, r) ->
 		val pioneer = r.pioneerType
@@ -150,9 +163,10 @@ fun MyReportsCard(container: AppContainer, userId: String) {
 							bibleStudiesCount = studies.toIntOrNull() ?: 0,
 							comments = comments.trim().ifBlank { null },
 						)
-						val ok = api { container.apiService.saveMyReport(body) }.isSuccess
+						// Se guarda primero en el teléfono (confirmado en disco) y se envía; sin internet queda en la cola y se manda sola.
+						val result = container.submitReport(body, r.report?.submittedAt?.let { isoVersion(it) }, "Informe de ${m.label}")
 						saving = false
-						if (ok) { editing = null; state.reload() } else error = "No se pudo guardar. Intenta de nuevo."
+						if (result.saved) { savedNote = result.note(); editing = null; state.reload() } else error = result.note() ?: "No se pudo guardar. Intenta de nuevo."
 					}
 				}) { Text(if (saving) "Guardando..." else "Guardar informe") }
 			},
