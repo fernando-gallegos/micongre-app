@@ -86,7 +86,7 @@ import java.time.LocalDate
 private val TYPE_LABEL = mapOf(
 	"midweek" to "Entre semana",
 	"weekend" to "Fin de semana",
-	"operational" to "Tarea operativa",
+	"operational" to "Acomodadores",
 	"outgoing_talk" to "Discurso enviado",
 	"pastoral_visit" to "Pastoreo",
 	"pastoral_visit_request" to "Pastoreo",

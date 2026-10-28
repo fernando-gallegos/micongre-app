@@ -357,14 +357,14 @@ private fun SongCard(text: String) {
 	AppCard { Text(text, Modifier.padding(16.dp), fontWeight = FontWeight.SemiBold) }
 }
 
-// --- Tareas operativas: una sección más al final del programa ---
+// --- Acomodadores: una sección más al final del programa ---
 
 @Composable
 private fun OperationalSection(items: List<OperationalItem>) {
 	if (items.isEmpty()) return
 	val av = items.filter { it.privilegeId == "priv_audio_console" || it.privilegeId == "priv_video_zoom" }
 	val ushers = items - av.toSet()
-	SectionBar("Tareas operativas", MaterialTheme.colorScheme.primary)
+	SectionBar("Acomodadores", MaterialTheme.colorScheme.primary)
 	AppCard {
 		Column {
 			fun label(i: OperationalItem) = i.privilegeName + (i.position?.takeIf { it.isNotBlank() }?.let { " — $it" } ?: "")

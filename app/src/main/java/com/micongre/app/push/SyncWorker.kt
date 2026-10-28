@@ -37,7 +37,7 @@ private val REMINDER_TYPES = setOf("midweek", "weekend", "operational")
 private val REMINDER_TITLES = mapOf(
 	"midweek" to "reunión de entre semana",
 	"weekend" to "reunión de fin de semana",
-	"operational" to "tarea operativa en la reunión",
+	"operational" to "asignación de acomodadores en la reunión",
 )
 
 /** Crea el canal de notificaciones (Android 8+). */
