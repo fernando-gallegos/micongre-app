@@ -289,13 +289,30 @@ fun PanelScreen(container: AppContainer, me: Me, onOpenS21: () -> Unit) {
 
 	visitAction?.let { (v, status) ->
 		val word = when (status) { "completed" -> "completado"; "postponed" -> "postergado"; else -> "cancelado" }
+		// Al postergar se pide la nueva fecha: el servidor crea otro pastoreo con el mismo publicador y los mismos ancianos.
+		var newDate by remember(v.id) { mutableStateOf("") }
+		var newNotes by remember(v.id) { mutableStateOf("") }
+		var failed by remember(v.id) { mutableStateOf(false) }
 		AlertDialog(
 			onDismissRequest = { visitAction = null },
 			title = { Text("¿Confirmas marcar el pastoreo de ${v.publisherName} (${Fmt.dmy(v.requestedDate)}) como $word?") },
+			text = if (status == "postponed") {
+				{
+					Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+						DateField("Nueva fecha", newDate, { newDate = it })
+						OutlinedTextField(newNotes, { newNotes = it.take(1000) }, label = { Text("Comentario del nuevo pastoreo (opcional)") })
+						Text("Se crea otro pastoreo para esa fecha, con el mismo publicador y los mismos ancianos.", style = MaterialTheme.typography.bodySmall)
+						if (failed) Text("No se pudo guardar. Revisa la fecha e intenta de nuevo.", color = MaterialTheme.colorScheme.error)
+					}
+				}
+			} else null,
 			confirmButton = {
-				TextButton(onClick = {
-					visitAction = null
-					scope.launch { api { container.apiService.setVisitStatus(v.id, VisitStatusRequest(status)) }; reloadPastoral() }
+				TextButton(enabled = status != "postponed" || Fmt.parse(newDate) != null, onClick = {
+					scope.launch {
+						val body = if (status == "postponed") VisitStatusRequest(status, newDate, newNotes.trim().ifBlank { null }) else VisitStatusRequest(status)
+						val ok = api { container.apiService.setVisitStatus(v.id, body) }.isSuccess
+						if (ok) { visitAction = null; reloadPastoral() } else failed = true
+					}
 				}) { Text("Confirmar") }
 			},
 			dismissButton = { TextButton(onClick = { visitAction = null }) { Text("Cancelar") } },

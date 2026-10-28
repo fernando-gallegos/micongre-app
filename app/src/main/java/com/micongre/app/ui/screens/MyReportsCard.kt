@@ -119,7 +119,7 @@ fun MyReportsCard(container: AppContainer, userId: String) {
 		var hours by remember(m.label) { mutableStateOf(Fmt.hours(r.report?.hours)) }
 		var project by remember(m.label) { mutableStateOf(Fmt.hours(r.report?.projectHours)) }
 		var studies by remember(m.label) { mutableStateOf(r.report?.bibleStudiesCount?.takeIf { it > 0 }?.toString() ?: "") }
-		var comments by remember(m.label) { mutableStateOf("") }
+		var comments by remember(m.label) { mutableStateOf(r.report?.comments ?: "") }
 		var error by remember(m.label) { mutableStateOf<String?>(null) }
 		var saving by remember(m.label) { mutableStateOf(false) }
 		val projectMax = (PIONEER_CAP - (parseHours(hours) ?: 0.0)).coerceAtLeast(0.0)

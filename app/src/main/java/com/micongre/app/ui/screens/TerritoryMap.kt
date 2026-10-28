@@ -63,15 +63,16 @@ private fun parseShapes(data: kotlinx.serialization.json.JsonElement?): List<Sha
 		val type = geo["type"]?.jsonPrimitive?.content ?: continue
 		val coords = geo["coordinates"] ?: continue
 		fun pt(e: kotlinx.serialization.json.JsonElement): Pair<Double, Double>? {
-			val a = e.jsonArray
+			val a = runCatching { e.jsonArray }.getOrNull() ?: return null
+			if (a.size < 2) return null
 			val lng = (a[0] as? JsonPrimitive)?.doubleOrNull ?: return null
 			val lat = (a[1] as? JsonPrimitive)?.doubleOrNull ?: return null
 			return lng to lat
 		}
 		when (type) {
 			"Point" -> pt(coords)?.let { out += Shape(if (text != null) "text" else "point", listOf(it), text, emoji) }
-			"LineString" -> out += Shape("line", coords.jsonArray.mapNotNull { pt(it) }, null, null)
-			"Polygon" -> out += Shape("polygon", coords.jsonArray.firstOrNull()?.jsonArray?.mapNotNull { pt(it) } ?: emptyList(), null, null)
+			"LineString" -> (coords as? kotlinx.serialization.json.JsonArray)?.mapNotNull { pt(it) }?.takeIf { it.isNotEmpty() }?.let { out += Shape("line", it, null, null) }
+			"Polygon" -> ((coords as? kotlinx.serialization.json.JsonArray)?.firstOrNull() as? kotlinx.serialization.json.JsonArray)?.mapNotNull { pt(it) }?.takeIf { it.isNotEmpty() }?.let { out += Shape("polygon", it, null, null) }
 		}
 	}
 	return out

@@ -241,9 +241,9 @@ private fun MidweekView(container: AppContainer, weekStart: LocalDate) {
 					} else {
 						val heading = partHeading(a)
 						val lines = buildList {
-							add((if (a.sectionType == "student_assignment" && false) "" else "Asignado") to a.mainAssigneeName)
+							add("Asignado" to a.mainAssigneeName)
 							if (a.sectionType == "student_assignment" && a.assistantAssigneeName != null) add("Ayudante" to a.assistantAssigneeName)
-							if (m.hasAuxRoom && a.sectionType == "student_assignment") add("Sala" to if (a.room == "auxiliary") "Auxiliar" else "Principal")
+							if (m.hasAuxRoom && (a.sectionType == "student_assignment" || a.sectionType == "bible_reading")) add("Sala" to if (a.room == "auxiliary") "Auxiliar" else "Principal")
 						}
 						PartRow((a.partNumber?.let { "$it. " } ?: "") + heading, a.durationMinutes, a.description, lines)
 					}

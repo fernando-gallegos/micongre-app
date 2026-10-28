@@ -178,7 +178,7 @@ data class AssignedVisit(
 data class AssignedVisitsResponse(val items: List<AssignedVisit> = emptyList())
 
 @Serializable
-data class VisitStatusRequest(val status: String)
+data class VisitStatusRequest(val status: String, val newDate: String? = null, val notes: String? = null)
 
 // --- Territorios (solo las asignaciones propias) ---
 

@@ -76,8 +76,8 @@ private sealed interface Action {
 	data class DeleteHistory(val a: TerritoryAssignmentRow) : Action
 }
 
-/** Territorios (dentro de Predicación): agregar, editar y eliminar territorios, y encargarlos a alguien; igual que la web. El dibujo
- * del mapa se edita desde la web; aquí se puede ver. */
+/** Territorios (dentro de Predicación): agregar, editar y eliminar territorios, dibujar su mapa (TerritoryMapEditor) y encargarlos a
+ * alguien; igual que la web. */
 @Composable
 fun TerritoriesScreen(container: AppContainer, me: Me) {
 	if (!canManageTerritories(me)) {
